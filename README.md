@@ -3,7 +3,7 @@
 拉取 etcd:3.2.24 镜像
 
 ```shell
-docker push kainonly/etcd:3.2.24
+docker pull kainonly/etcd:3.2.24
 ```
 
 重命名镜像
