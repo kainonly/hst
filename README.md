@@ -1,21 +1,28 @@
 # etcd
 
-拉取 etcd:3.2.24 镜像
+历史版本
+
+- 3.4.0
+- 3.3.15
+- 3.2.34
+
+
+拉取 etcd:tag 镜像
 
 ```shell
-docker pull kainonly/etcd:3.2.24
+docker pull kainonly/etcd:tag
 ```
 
 重命名镜像
 
 ```shell
-docker tag kainonly/etcd:3.2.24 k8s.gcr.io/etcd:3.2.24
+docker tag kainonly/etcd:tag k8s.gcr.io/etcd:tag
 ```
 
 删除镜像
 
 ```shell
-docker rmi kainonly/etcd:3.2.24
+docker rmi kainonly/etcd:tag
 ```
 
 设置 docker-compose
@@ -24,7 +31,7 @@ docker rmi kainonly/etcd:3.2.24
 version: '3.7'
 services:
   etcd:
-    image: kainonly/etcd:3.2.24
+    image: kainonly/etcd:tag
     restart: always
     command: etcd --config-file=/etc/config.yml
     volumes:
