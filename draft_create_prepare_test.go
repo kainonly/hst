@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/kainonly/hst"
-	"github.com/stretchr/testify/assert"
 	"github.com/tjfoc/gmsm/sm3"
 )
 
@@ -75,7 +74,18 @@ func TestCreatePrepare(t *testing.T) {
 							SetMerchantType("OTHER") // 商户业务类型：其他
 
 	result, err := client.CreatePrepare(ctx, dto)
-	assert.NoError(t, err)
+	if err != nil {
+		logResult(t, "create_prepare", map[string]any{
+			"bizSuccess": false,
+			"error":      err.Error(),
+		})
+		t.Fatalf("CreatePrepare 失败: %v", err)
+	}
 
-	logResult(t, "create_prepare", result)
+	// 写入日志（包含 fileManifest 字段名，供 upload_files 测试读取）
+	logResult(t, "create_prepare", prepareLogData{
+		UploadToken:   result.BizData.UploadToken,
+		ExpireSeconds: result.BizData.ExpireSeconds,
+		FileFields:    []string{"certPhotoAFiles", "certPhotoBFiles", "licensePhotoFiles"},
+	})
 }
