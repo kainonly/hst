@@ -27,18 +27,10 @@ func NewTradeImportDto(channelId string, uploadToken string, filePath string) *T
 	}
 }
 
-// multipartFields 生成 multipart 字段列表。
-// channelId / uploadToken 作为普通 form 字段，file 作为文件字段。
+// multipartFields 生成 multipart 文件字段列表。
+// channelId / uploadToken 由 TradeImport 方法用 SetFormData 设置。
 func (x *TradeImportDto) multipartFields() []*resty.MultipartField {
 	return []*resty.MultipartField{
-		{
-			Name:   "channelId",
-			Values: []string{x.ChannelId},
-		},
-		{
-			Name:   "uploadToken",
-			Values: []string{x.UploadToken},
-		},
 		{
 			Name:     "file",
 			FileName: filepath.Base(x.FilePath),
@@ -71,15 +63,22 @@ type TradeImportRespData struct {
 // uploadToken 为一次性凭证，无论上传成功与否都会被消费；上传失败需从 Step 1 重新开始。
 // 返回 busId，用于后续确认 / 查询 / 取消。
 func (x *Hst) TradeImport(ctx context.Context, dto *TradeImportDto) (busId string, err error) {
+	// channel-file 前缀与 BaseURL 的 channel 前缀不同，用拼接 URL
+	importURL := x.Option.BaseURL + "-file/doc-trade-file/import"
 	var resp *resty.Response
 	if resp, err = x.Client.R().SetContext(ctx).
+		SetFormData(map[string]string{
+			"channelId":   dto.ChannelId,
+			"uploadToken": dto.UploadToken,
+		}).
 		SetMultipartFields(dto.multipartFields()...).
-		Post("/api/v1/channel-file/doc-trade-file/import"); err != nil {
+		Post(importURL); err != nil {
 		return
 	}
 
 	if resp.StatusCode() != 200 {
-		err = help.E(0, `第三方接口响应失败!`)
+		err = help.E(0, fmt.Sprintf(`第三方接口响应失败! status=%d body=%s`,
+			resp.StatusCode(), resp.String()))
 		return
 	}
 

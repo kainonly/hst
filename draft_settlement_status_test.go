@@ -15,5 +15,5 @@ func TestSettlementStatus(t *testing.T) {
 	result, err := client.SettlementStatus(ctx, dto)
 	assert.NoError(t, err)
 
-	t.Log(result)
+	logResult(t, "settlement_status", result)
 }

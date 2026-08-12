@@ -119,19 +119,11 @@ func (x *UploadFilesDto) SetMerchantAgreementPhotoFiles(i ...string) *UploadFile
 	return x
 }
 
-// multipartFields 按 fileManifest 顺序生成 multipart 字段列表。
+// multipartFields 按 fileManifest 顺序生成 multipart 文件字段列表。
 // 同一字段多个文件按 slice 顺序生成多个 MultipartField（Name 相同）。
+// channelId 与 uploadToken 由 UploadFiles 方法用 SetFormData 设置。
 func (x *UploadFilesDto) multipartFields() []*resty.MultipartField {
 	var fields []*resty.MultipartField
-	// channel id 与 upload token 作为普通 form 字段
-	fields = append(fields, &resty.MultipartField{
-		Name:   "channelId",
-		Values: []string{x.ChannelId},
-	}, &resty.MultipartField{
-		Name:   "uploadToken",
-		Values: []string{x.UploadToken},
-	})
-	// 文件字段（顺序与 fileManifest 一致）
 	fileGroups := []struct {
 		name  string
 		paths []string
@@ -261,15 +253,22 @@ type UploadFilesRespData struct {
 // 与标准 JSON 加密流程相互独立，响应为普通 JSON（非加密信封）。
 // uploadToken 为一次性凭证，无论本次上传成功与否都会被消费；上传失败需从 Step 1 重新开始。
 func (x *Hst) UploadFiles(ctx context.Context, dto *UploadFilesDto) (bizData *UploadFilesBizData, err error) {
+	// channel-multi-file 前缀与 BaseURL 的 channel 前缀不同，用拼接 URL
+	uploadURL := x.Option.BaseURL + "-multi-file/merchant_info_draft/upload_files"
 	var resp *resty.Response
 	if resp, err = x.Client.R().SetContext(ctx).
+		SetFormData(map[string]string{
+			"channelId":   dto.ChannelId,
+			"uploadToken": dto.UploadToken,
+		}).
 		SetMultipartFields(dto.multipartFields()...).
-		Post("/api/v1/channel-multi-file/merchant_info_draft/upload_files"); err != nil {
+		Post(uploadURL); err != nil {
 		return
 	}
 
 	if resp.StatusCode() != 200 {
-		err = help.E(0, `第三方接口响应失败!`)
+		err = help.E(0, fmt.Sprintf(`第三方接口响应失败! status=%d body=%s`,
+			resp.StatusCode(), resp.String()))
 		return
 	}
 
