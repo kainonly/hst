@@ -95,7 +95,7 @@ func (x *Hst) TradeImport(ctx context.Context, dto *TradeImportDto) (busId strin
 	}
 
 	if !importResp.Data.BizSuccess {
-		err = help.E(0, importResp.Data.BizMsg)
+		err = bizError(importResp.Data.BizCode, importResp.Data.BizMsg)
 		return
 	}
 

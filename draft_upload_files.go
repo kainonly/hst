@@ -285,7 +285,7 @@ func (x *Hst) UploadFiles(ctx context.Context, dto *UploadFilesDto) (bizData *Up
 	}
 
 	if !uploadResp.Data.BizSuccess {
-		err = help.E(0, uploadResp.Data.BizMsg)
+		err = bizError(uploadResp.Data.BizCode, uploadResp.Data.BizMsg)
 		return
 	}
 

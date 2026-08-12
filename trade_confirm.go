@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/bytedance/sonic"
-	"github.com/kainonly/go/help"
 )
 
 type TradeConfirmDto struct {
@@ -56,7 +55,7 @@ func (x *Hst) TradeConfirm(ctx context.Context, dto *TradeConfirmDto) (result *S
 		return
 	}
 	if !result.BizSuccess {
-		err = help.E(0, result.BizMsg)
+		err = bizError(result.BizCode, result.BizMsg)
 	}
 	return
 }

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/bytedance/sonic"
-	"github.com/kainonly/go/help"
 )
 
 type AvailableBalanceDto struct {
@@ -78,7 +77,7 @@ func (x *Hst) AvailableBalance(ctx context.Context, dto *AvailableBalanceDto) (r
 		return
 	}
 	if !result.BizSuccess {
-		err = help.E(0, result.BizMsg)
+		err = bizError(result.BizCode, result.BizMsg)
 	}
 	return
 }

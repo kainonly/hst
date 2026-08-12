@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/bytedance/sonic"
-	"github.com/kainonly/go/help"
 )
 
 type GetUploadTokenDto struct {
@@ -63,7 +62,7 @@ func (x *Hst) GetUploadToken(ctx context.Context, dto *GetUploadTokenDto) (resul
 		return
 	}
 	if !result.BizSuccess {
-		err = help.E(0, result.BizMsg)
+		err = bizError(result.BizCode, result.BizMsg)
 	}
 	return
 }

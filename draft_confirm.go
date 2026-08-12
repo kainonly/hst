@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/bytedance/sonic"
-	"github.com/kainonly/go/help"
 )
 
 type ConfirmDto struct {
@@ -124,7 +123,7 @@ func (x *Hst) Confirm(ctx context.Context, dto *ConfirmDto) (result *SignObjectR
 		return
 	}
 	if !result.BizSuccess {
-		err = help.E(0, result.BizMsg)
+		err = bizError(result.BizCode, result.BizMsg)
 	}
 	return
 }

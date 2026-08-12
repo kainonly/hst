@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/bytedance/sonic"
-	"github.com/kainonly/go/help"
 )
 
 type SettlementStatusDto struct {
@@ -53,7 +52,7 @@ func (x *Hst) SettlementStatus(ctx context.Context, dto *SettlementStatusDto) (r
 		return
 	}
 	if !result.BizSuccess {
-		err = help.E(0, result.BizMsg)
+		err = bizError(result.BizCode, result.BizMsg)
 	}
 	return
 }

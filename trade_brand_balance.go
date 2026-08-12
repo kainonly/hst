@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/bytedance/sonic"
-	"github.com/kainonly/go/help"
 )
 
 type BrandBalanceDto struct {
@@ -62,7 +61,7 @@ func (x *Hst) BrandBalance(ctx context.Context, dto *BrandBalanceDto) (result *S
 		return
 	}
 	if !result.BizSuccess {
-		err = help.E(0, result.BizMsg)
+		err = bizError(result.BizCode, result.BizMsg)
 	}
 	return
 }

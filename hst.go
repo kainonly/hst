@@ -1,7 +1,10 @@
 package hst
 
 import (
+	"bytes"
 	"context"
+	"crypto/cipher"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
@@ -9,9 +12,9 @@ import (
 
 	"github.com/bytedance/sonic"
 	"github.com/kainonly/go/help"
-	"github.com/kainonly/hst/crypto"
-	"github.com/kainonly/hst/sm2base64"
-	"github.com/kainonly/hst/sm4hex"
+	"github.com/tjfoc/gmsm/sm2"
+	"github.com/tjfoc/gmsm/sm4"
+	"github.com/tjfoc/gmsm/x509"
 	"resty.dev/v3"
 )
 
@@ -81,14 +84,14 @@ func (x *Hst) NewSignObjectReq(body Body) (signObjectReq *SignObjectReq, err err
 	signObjectReq = &SignObjectReq{
 		Timestamp: body.GetTs(),
 		ReqTxn:    txn,
-		IvHex:     crypto.GenerateRandomIvHex(),
+		IvHex:     generateRandomIvHex(),
 		ChannelId: x.Option.ChannelId,
 		Version:   "1.0",
 	}
 	if signObjectReq.Body, err = sonic.MarshalString(body); err != nil {
 		return
 	}
-	if signObjectReq.Signature, err = sm2base64.Sign([]byte(signObjectReq.Body),
+	if signObjectReq.Signature, err = sm2Sign([]byte(signObjectReq.Body),
 		x.Option.PriKey, x.Option.ChannelId); err != nil {
 		return
 	}
@@ -101,7 +104,7 @@ func (x *Hst) NewSignObjectReq(body Body) (signObjectReq *SignObjectReq, err err
 		return
 	}
 	var encryptedBytes []byte
-	if encryptedBytes, err = sm4hex.EncryptCBCPadding([]byte(signObjectReq.Body), keyBytes, ivBytes); err != nil {
+	if encryptedBytes, err = sm4EncryptCBCPadding([]byte(signObjectReq.Body), keyBytes, ivBytes); err != nil {
 		return
 	}
 	signObjectReq.Body = base64.StdEncoding.EncodeToString(encryptedBytes)
@@ -163,7 +166,7 @@ func (x *Hst) decryptAndVerify(signObjectResp *SignObjectResp) (err error) {
 	var keyBytes []byte
 	keyBytes, err = hex.DecodeString(x.Option.EncryptKey)
 	var decrypted []byte
-	if decrypted, err = sm4hex.DecryptCBCPadding(encryptedBytes, keyBytes, ivBytes); err != nil {
+	if decrypted, err = sm4DecryptCBCPadding(encryptedBytes, keyBytes, ivBytes); err != nil {
 		err = help.E(0, `第三方接口响应解密失败!`)
 		return
 	}
@@ -171,7 +174,7 @@ func (x *Hst) decryptAndVerify(signObjectResp *SignObjectResp) (err error) {
 
 	var verified bool
 	defaultUserIdHex := hex.EncodeToString([]byte(signObjectResp.ServerAppId))
-	if verified, err = sm2base64.Verify(
+	if verified, err = sm2Verify(
 		[]byte(signObjectResp.Body),
 		signObjectResp.Signature,
 		x.Option.WicoPubKey,
@@ -192,6 +195,11 @@ type SignObjectRespResult[T any] struct {
 	BizData    T      `json:"bizData"`
 }
 
+// bizError 构造业务层错误，统一格式：第三方接口业务失败! bizCode=%s bizMsg=%s
+func bizError(bizCode, bizMsg string) error {
+	return help.E(0, fmt.Sprintf(`第三方接口业务失败! bizCode=%s bizMsg=%s`, bizCode, bizMsg))
+}
+
 // FileManifest 文件哈希清单。
 // 每个字段对应一种资质，值为按上传顺序排列的 SM3 哈希（64 位 Hex）。
 // 无需上传的字段保持 nil，序列化后等同空列表。
@@ -209,4 +217,150 @@ type FileManifest struct {
 	ShopEntrancePhotoFiles      []string `json:"shopEntrancePhotoFiles,omitempty"`      // 门店内景
 	CheckstandPhotoFiles        []string `json:"checkstandPhotoFiles,omitempty"`        // 收银台
 	MerchantAgreementPhotoFiles []string `json:"merchantAgreementPhotoFiles,omitempty"` // 商户协议
+}
+
+// ---- 以下函数原属子包 crypto / sm2base64 / sm4hex，现已合并入 hst 包 ----
+
+const defaultSm2UserId = "1234567812345678"
+
+// generateRandomIvHex 生成随机的 SM4 初始化向量（IV），返回 Hex 格式。
+func generateRandomIvHex() string {
+	iv := make([]byte, sm4.BlockSize)
+	_, _ = rand.Read(iv)
+	return hex.EncodeToString(iv)
+}
+
+// parseKeyBytes 自动识别并解码密钥字符串（支持 Hex 和 Base64 两种格式）。
+func parseKeyBytes(keyStr string) ([]byte, error) {
+	// 先尝试 Hex 解码
+	keyBytes, err := hex.DecodeString(keyStr)
+	if err == nil {
+		return keyBytes, nil
+	}
+	// 再尝试 Base64 解码
+	keyBytes, err = base64.StdEncoding.DecodeString(keyStr)
+	if err == nil {
+		return keyBytes, nil
+	}
+	return nil, fmt.Errorf("无法解码密钥，既不是有效的Hex也不是Base64格式")
+}
+
+// sm2Sign SM2 签名（私钥签名），签名结果为 Base64 编码格式。
+func sm2Sign(data []byte, privateKey string, userId string) (string, error) {
+	privKeyBytes, err := parseKeyBytes(privateKey)
+	if err != nil {
+		return "", fmt.Errorf("解码私钥失败: %w", err)
+	}
+
+	privKey, err := x509.ParsePKCS8UnecryptedPrivateKey(privKeyBytes)
+	if err != nil {
+		return "", fmt.Errorf("解析SM2私钥失败: %w", err)
+	}
+
+	uid := []byte(defaultSm2UserId)
+	if userId != "" {
+		uid = []byte(userId)
+	}
+
+	r, s, err := sm2.Sm2Sign(privKey, data, uid, rand.Reader)
+	if err != nil {
+		return "", fmt.Errorf("SM2签名失败: %w", err)
+	}
+
+	sigBytes, err := sm2.SignDigitToSignData(r, s)
+	if err != nil {
+		return "", fmt.Errorf("序列化签名失败: %w", err)
+	}
+
+	return base64.StdEncoding.EncodeToString(sigBytes), nil
+}
+
+// sm2Verify SM2 验签（公钥验证），签名为 Base64 编码格式。
+func sm2Verify(data []byte, signatureBase64 string, publicKey string, userId string) (bool, error) {
+	pubKeyBytes, err := parseKeyBytes(publicKey)
+	if err != nil {
+		return false, fmt.Errorf("解码公钥失败: %w", err)
+	}
+
+	pubKey, err := x509.ParseSm2PublicKey(pubKeyBytes)
+	if err != nil {
+		return false, fmt.Errorf("解析SM2公钥失败: %w", err)
+	}
+
+	uid := []byte(defaultSm2UserId)
+	if userId != "" {
+		uid = []byte(userId)
+	}
+
+	sigBytes, err := base64.StdEncoding.DecodeString(signatureBase64)
+	if err != nil {
+		return false, fmt.Errorf("解码签名Base64失败: %w", err)
+	}
+
+	r, s, err := sm2.SignDataToSignDigit(sigBytes)
+	if err != nil {
+		return false, fmt.Errorf("反序列化签名失败: %w", err)
+	}
+
+	return sm2.Sm2Verify(pubKey, data, uid, r, s), nil
+}
+
+// sm4EncryptCBCPadding 使用 SM4 CBC 模式 PKCS7 填充加密。
+func sm4EncryptCBCPadding(data, keyBytes, ivBytes []byte) ([]byte, error) {
+	block, err := sm4.NewCipher(keyBytes)
+	if err != nil {
+		return nil, fmt.Errorf("创建SM4 cipher失败: %w", err)
+	}
+
+	paddedData := pkcs7Pad(data, block.BlockSize())
+	ciphertext := make([]byte, len(paddedData))
+
+	mode := cipher.NewCBCEncrypter(block, ivBytes)
+	mode.CryptBlocks(ciphertext, paddedData)
+
+	return ciphertext, nil
+}
+
+// sm4DecryptCBCPadding 使用 SM4 CBC 模式 PKCS7 填充解密。
+func sm4DecryptCBCPadding(encryptedData, keyBytes, ivBytes []byte) ([]byte, error) {
+	block, err := sm4.NewCipher(keyBytes)
+	if err != nil {
+		return nil, fmt.Errorf("创建SM4 cipher失败: %w", err)
+	}
+
+	plaintext := make([]byte, len(encryptedData))
+
+	mode := cipher.NewCBCDecrypter(block, ivBytes)
+	mode.CryptBlocks(plaintext, encryptedData)
+
+	plaintext, err = pkcs7Unpad(plaintext, block.BlockSize())
+	if err != nil {
+		return nil, fmt.Errorf("PKCS7去填充失败: %w", err)
+	}
+
+	return plaintext, nil
+}
+
+// pkcs7Pad PKCS7 填充。
+func pkcs7Pad(data []byte, blockSize int) []byte {
+	padding := blockSize - len(data)%blockSize
+	padText := bytes.Repeat([]byte{byte(padding)}, padding)
+	return append(data, padText...)
+}
+
+// pkcs7Unpad PKCS7 去填充。
+func pkcs7Unpad(data []byte, blockSize int) ([]byte, error) {
+	if len(data) == 0 || len(data)%blockSize != 0 {
+		return nil, fmt.Errorf("无效的填充数据")
+	}
+	padding := int(data[len(data)-1])
+	if padding > blockSize || padding == 0 {
+		return nil, fmt.Errorf("无效的填充值: %d", padding)
+	}
+	for i := len(data) - padding; i < len(data); i++ {
+		if data[i] != byte(padding) {
+			return nil, fmt.Errorf("无效的PKCS7填充")
+		}
+	}
+	return data[:len(data)-padding], nil
 }

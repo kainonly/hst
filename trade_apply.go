@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/bytedance/sonic"
-	"github.com/kainonly/go/help"
 )
 
 type ApplyDto struct {
@@ -87,7 +86,7 @@ func (x *Hst) Apply(ctx context.Context, dto *ApplyDto) (result *SignObjectRespR
 		return
 	}
 	if !result.BizSuccess {
-		err = help.E(0, result.BizMsg)
+		err = bizError(result.BizCode, result.BizMsg)
 	}
 	return
 }

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/bytedance/sonic"
-	"github.com/kainonly/go/help"
 )
 
 type UpdatePrepareDto struct {
@@ -294,7 +293,7 @@ func (x *Hst) UpdatePrepare(ctx context.Context, dto *UpdatePrepareDto) (result 
 		return
 	}
 	if !result.BizSuccess {
-		err = help.E(0, result.BizMsg)
+		err = bizError(result.BizCode, result.BizMsg)
 	}
 	return
 }
