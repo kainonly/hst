@@ -11,7 +11,7 @@ import (
 func TestMerchantInfoDraft(t *testing.T) {
 	ctx := context.Background()
 
-	body := hst.NewSettlementStatusBody(`123`)
+	body := hst.NewSettlementStatusDto(`123`)
 	bizData, err := client.SettlementStatus(ctx, body)
 	assert.NoError(t, err)
 

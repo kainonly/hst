@@ -185,7 +185,7 @@ func (x *Hst) decryptAndVerify(signObjectResp *SignObjectResp) (err error) {
 	return
 }
 
-type SignObjectRespBody[T any] struct {
+type SignObjectRespResult[T any] struct {
 	BizSuccess bool   `json:"bizSuccess"`
 	BizCode    string `json:"bizCode"`
 	BizMsg     string `json:"bizMsg"`
