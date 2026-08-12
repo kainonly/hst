@@ -102,6 +102,9 @@ func logResult(t *testing.T, name string, result any) {
 
 // readLastLogBizData 从 logs/<name>.log 读取最后一行，解析 bizData 字段到传入的指针。
 // 用于测试间数据传递（如 upload_files 测试从 create_prepare 日志读取 uploadToken）。
+// 支持两种日志格式：
+//  1. 有外层包装 {"bizSuccess":true,"bizData":{...}} → 取 bizData
+//  2. 直接是 bizData {...} → 整行直接解析
 func readLastLogBizData(t *testing.T, name string, bizData any) {
 	t.Helper()
 	logPath := filepath.Join("logs", name+".log")
@@ -109,7 +112,6 @@ func readLastLogBizData(t *testing.T, name string, bizData any) {
 	if err != nil {
 		t.Fatalf("读取日志文件 %s 失败: %v", logPath, err)
 	}
-	// 取最后一行非空内容
 	lines := splitNonEmptyLines(string(b))
 	if len(lines) == 0 {
 		t.Fatalf("日志文件 %s 无有效记录", logPath)
@@ -124,21 +126,26 @@ func readLastLogBizData(t *testing.T, name string, bizData any) {
 	for len(jsonPart) > 0 && (jsonPart[0] == ' ' || jsonPart[0] == '\t') {
 		jsonPart = jsonPart[1:]
 	}
-	// 解析外层 result，取 bizData
+	// 尝试解析为外层包装（含 bizSuccess/bizData）
 	var wrapper struct {
 		BizSuccess bool            `json:"bizSuccess"`
 		BizCode    string          `json:"bizCode"`
 		BizMsg     string          `json:"bizMsg"`
 		BizData    json.RawMessage `json:"bizData"`
 	}
-	if err := sonic.UnmarshalString(jsonPart, &wrapper); err != nil {
+	if err := sonic.UnmarshalString(jsonPart, &wrapper); err == nil && len(wrapper.BizData) > 0 {
+		// 有外层包装
+		if !wrapper.BizSuccess {
+			t.Fatalf("日志记录的业务失败: bizCode=%s bizMsg=%s", wrapper.BizCode, wrapper.BizMsg)
+		}
+		if err := sonic.Unmarshal(wrapper.BizData, bizData); err != nil {
+			t.Fatalf("解析 bizData 失败: %v", err)
+		}
+		return
+	}
+	// 无外层包装，整行直接解析为 bizData
+	if err := sonic.UnmarshalString(jsonPart, bizData); err != nil {
 		t.Fatalf("解析日志 JSON 失败: %v (line=%s)", err, lastLine)
-	}
-	if !wrapper.BizSuccess {
-		t.Fatalf("日志记录的业务失败: bizCode=%s bizMsg=%s", wrapper.BizCode, wrapper.BizMsg)
-	}
-	if err := sonic.Unmarshal(wrapper.BizData, bizData); err != nil {
-		t.Fatalf("解析 bizData 失败: %v", err)
 	}
 }
 

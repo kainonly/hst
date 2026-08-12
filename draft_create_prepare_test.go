@@ -71,7 +71,8 @@ func TestCreatePrepare(t *testing.T) {
 			CertPhotoBFiles:   []string{certPhotoBHash},   // 身份证国徽面
 			LicensePhotoFiles: []string{licensePhotoHash}, // 营业执照
 		},
-	).SetAlipayAccount(cfg.PersonMybankAccount) // 支付宝收款账号（网商二类户）
+	).SetAlipayAccount(cfg.PersonMybankAccount). // 支付宝收款账号（网商二类户）
+							SetMerchantType("OTHER") // 商户业务类型：其他
 
 	result, err := client.CreatePrepare(ctx, dto)
 	assert.NoError(t, err)
