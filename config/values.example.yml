@@ -1,0 +1,9 @@
+context: dev
+configs:
+  dev:
+    base_url:
+    pri_key: <your_pri_key_hex>
+    wico_pub_key: <your_wico_public_key_hex>
+    encrypt_key: <your_encrypt_key_hex>
+    merchant_no:
+    channel_id:

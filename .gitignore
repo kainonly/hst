@@ -26,6 +26,7 @@ go.work
 go.work.sum
 
 # env file
+.codebuddy
 .env
 config/values.yml
 
