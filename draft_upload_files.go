@@ -253,8 +253,8 @@ type UploadFilesRespData struct {
 // 与标准 JSON 加密流程相互独立，响应为普通 JSON（非加密信封）。
 // uploadToken 为一次性凭证，无论本次上传成功与否都会被消费；上传失败需从 Step 1 重新开始。
 func (x *Hst) UploadFiles(ctx context.Context, dto *UploadFilesDto) (bizData *UploadFilesBizData, err error) {
-	// channel-multi-file 前缀与 BaseURL 的 channel 前缀不同，用拼接 URL
-	uploadURL := x.Option.BaseURL + "-multi-file/merchant_info_draft/upload_files"
+	// channel-multi-file 前缀，拼接完整 URL
+	uploadURL := x.Option.BaseURL + "/channel-multi-file/merchant_info_draft/upload_files"
 	var resp *resty.Response
 	if resp, err = x.Client.R().SetContext(ctx).
 		SetFormData(map[string]string{

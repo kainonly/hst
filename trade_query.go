@@ -66,7 +66,7 @@ func (x *Hst) TradeQuery(ctx context.Context, dto *TradeQueryDto) (result *SignO
 
 	var b string
 	if b, err = x.Request(ctx,
-		"/merchant/withdrawal/query", signObjectReq); err != nil {
+		"/channel/merchant/withdrawal/query", signObjectReq); err != nil {
 		return
 	}
 	if err = sonic.UnmarshalString(b, &result); err != nil {

@@ -45,7 +45,7 @@ func (x *Hst) SettlementStatus(ctx context.Context, dto *SettlementStatusDto) (r
 
 	var b string
 	if b, err = x.Request(ctx,
-		"/merchant_info_draft/settlement_status", signObjectReq); err != nil {
+		"/channel/merchant_info_draft/settlement_status", signObjectReq); err != nil {
 		return
 	}
 	if err = sonic.UnmarshalString(b, &result); err != nil {

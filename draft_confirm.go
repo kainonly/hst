@@ -116,7 +116,7 @@ func (x *Hst) Confirm(ctx context.Context, dto *ConfirmDto) (result *SignObjectR
 
 	var b string
 	if b, err = x.Request(ctx,
-		"/merchant_info_draft/confirm", signObjectReq); err != nil {
+		"/channel/merchant_info_draft/confirm", signObjectReq); err != nil {
 		return
 	}
 	if err = sonic.UnmarshalString(b, &result); err != nil {

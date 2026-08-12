@@ -55,7 +55,7 @@ func (x *Hst) GetUploadToken(ctx context.Context, dto *GetUploadTokenDto) (resul
 
 	var b string
 	if b, err = x.Request(ctx,
-		"/doc-trade-file/getUploadToken", signObjectReq); err != nil {
+		"/channel/doc-trade-file/getUploadToken", signObjectReq); err != nil {
 		return
 	}
 	if err = sonic.UnmarshalString(b, &result); err != nil {

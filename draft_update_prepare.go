@@ -286,7 +286,7 @@ func (x *Hst) UpdatePrepare(ctx context.Context, dto *UpdatePrepareDto) (result 
 
 	var b string
 	if b, err = x.Request(ctx,
-		"/merchant_info_draft/update/prepare", signObjectReq); err != nil {
+		"/channel/merchant_info_draft/update/prepare", signObjectReq); err != nil {
 		return
 	}
 	if err = sonic.UnmarshalString(b, &result); err != nil {

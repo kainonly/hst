@@ -63,8 +63,8 @@ type TradeImportRespData struct {
 // uploadToken 为一次性凭证，无论上传成功与否都会被消费；上传失败需从 Step 1 重新开始。
 // 返回 busId，用于后续确认 / 查询 / 取消。
 func (x *Hst) TradeImport(ctx context.Context, dto *TradeImportDto) (busId string, err error) {
-	// channel-file 前缀与 BaseURL 的 channel 前缀不同，用拼接 URL
-	importURL := x.Option.BaseURL + "-file/doc-trade-file/import"
+	// channel-file 前缀，拼接完整 URL
+	importURL := x.Option.BaseURL + "/channel-file/doc-trade-file/import"
 	var resp *resty.Response
 	if resp, err = x.Client.R().SetContext(ctx).
 		SetFormData(map[string]string{

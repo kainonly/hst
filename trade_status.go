@@ -71,7 +71,7 @@ func (x *Hst) TradeStatus(ctx context.Context, dto *TradeStatusDto) (result *Sig
 
 	var b string
 	if b, err = x.Request(ctx,
-		"/doc-trade-file/status", signObjectReq); err != nil {
+		"/channel/doc-trade-file/status", signObjectReq); err != nil {
 		return
 	}
 	if err = sonic.UnmarshalString(b, &result); err != nil {

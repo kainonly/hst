@@ -282,7 +282,7 @@ func (x *Hst) CreatePrepare(ctx context.Context, dto *CreatePrepareDto) (result 
 
 	var b string
 	if b, err = x.Request(ctx,
-		"/merchant_info_draft/create/prepare", signObjectReq); err != nil {
+		"/channel/merchant_info_draft/create/prepare", signObjectReq); err != nil {
 		return
 	}
 	if err = sonic.UnmarshalString(b, &result); err != nil {

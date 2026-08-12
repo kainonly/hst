@@ -47,7 +47,7 @@ func (x *Hst) TradeCancel(ctx context.Context, dto *TradeCancelDto) (result *Sig
 
 	var b string
 	if b, err = x.Request(ctx,
-		"/doc-trade-file/cancel", signObjectReq); err != nil {
+		"/channel/doc-trade-file/cancel", signObjectReq); err != nil {
 		return
 	}
 	if err = sonic.UnmarshalString(b, &result); err != nil {

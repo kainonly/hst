@@ -70,7 +70,7 @@ func (x *Hst) AvailableBalance(ctx context.Context, dto *AvailableBalanceDto) (r
 
 	var b string
 	if b, err = x.Request(ctx,
-		"/merchant_account/available_balance", signObjectReq); err != nil {
+		"/channel/merchant_account/available_balance", signObjectReq); err != nil {
 		return
 	}
 	if err = sonic.UnmarshalString(b, &result); err != nil {

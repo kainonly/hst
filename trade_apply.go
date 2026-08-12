@@ -79,7 +79,7 @@ func (x *Hst) Apply(ctx context.Context, dto *ApplyDto) (result *SignObjectRespR
 
 	var b string
 	if b, err = x.Request(ctx,
-		"/merchant/withdrawal/apply", signObjectReq); err != nil {
+		"/channel/merchant/withdrawal/apply", signObjectReq); err != nil {
 		return
 	}
 	if err = sonic.UnmarshalString(b, &result); err != nil {

@@ -54,7 +54,7 @@ func (x *Hst) BrandBalance(ctx context.Context, dto *BrandBalanceDto) (result *S
 
 	var b string
 	if b, err = x.Request(ctx,
-		"/merchant_account/brand-balance", signObjectReq); err != nil {
+		"/channel/merchant_account/brand-balance", signObjectReq); err != nil {
 		return
 	}
 	if err = sonic.UnmarshalString(b, &result); err != nil {
