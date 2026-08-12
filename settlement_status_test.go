@@ -8,12 +8,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMerchantInfoDraft(t *testing.T) {
+func TestSettlementStatus(t *testing.T) {
 	ctx := context.Background()
 
-	body := hst.NewSettlementStatusDto(`123`)
-	bizData, err := client.SettlementStatus(ctx, body)
+	dto := hst.NewSettlementStatusDto(`123`)
+	result, err := client.SettlementStatus(ctx, dto)
 	assert.NoError(t, err)
 
-	t.Log(bizData)
+	t.Log(result)
 }

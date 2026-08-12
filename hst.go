@@ -191,3 +191,22 @@ type SignObjectRespResult[T any] struct {
 	BizMsg     string `json:"bizMsg"`
 	BizData    T      `json:"bizData"`
 }
+
+// FileManifest 文件哈希清单。
+// 每个字段对应一种资质，值为按上传顺序排列的 SM3 哈希（64 位 Hex）。
+// 无需上传的字段保持 nil，序列化后等同空列表。
+type FileManifest struct {
+	CertPhotoAFiles             []string `json:"certPhotoAFiles,omitempty"`             // 身份证人像面
+	CertPhotoBFiles             []string `json:"certPhotoBFiles,omitempty"`             // 身份证国徽面
+	LicensePhotoFiles           []string `json:"licensePhotoFiles,omitempty"`           // 营业执照
+	PrgPhotoFiles               []string `json:"prgPhotoFiles,omitempty"`               // 组织机构代码证
+	IndustryLicensePhotoFiles   []string `json:"industryLicensePhotoFiles,omitempty"`   // 开户许可证
+	ShopPhotoFiles              []string `json:"shopPhotoFiles,omitempty"`              // 门头照
+	OtherPhotoFiles             []string `json:"otherPhotoFiles,omitempty"`             // 其他资料
+	CertPhotoCFiles             []string `json:"certPhotoCFiles,omitempty"`             // 手持身份证
+	RegisterProtocolPhotoFiles  []string `json:"registerProtocolPhotoFiles,omitempty"`  // 商户入驻协议
+	ContractPhotoFiles          []string `json:"contractPhotoFiles,omitempty"`          // 租赁协议
+	ShopEntrancePhotoFiles      []string `json:"shopEntrancePhotoFiles,omitempty"`      // 门店内景
+	CheckstandPhotoFiles        []string `json:"checkstandPhotoFiles,omitempty"`        // 收银台
+	MerchantAgreementPhotoFiles []string `json:"merchantAgreementPhotoFiles,omitempty"` // 商户协议
+}
