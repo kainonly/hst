@@ -24,25 +24,25 @@ func TestUpdatePrepare(t *testing.T) {
 	shopPhotoHash := sm3HashFile(t, shopPhotoPath)
 
 	dto := hst.NewUpdatePrepareDto(
-		uploadFilesResult.DraftId, // draftId（定位已有草稿）
-		[]string{"WICOIN_PAY"},    // productCode
-		cfg.PersonUsername,        // legalName（自然人即姓名）
-		cfg.PersonUsername+"_更新",  // shortName（修改：加"_更新"后缀）
-		"01",                      // merchantBaseType：01 自然人
-		"brand_other",             // subRoleType：其他服务公司
-		"01",                      // dealType：实体特约商户
-		"7299",                    // mcc：其他生活服务
-		cfg.PersonMobile,          // contactMobile
-		cfg.PersonUsername,        // contactName
-		"test@example.com",        // email
-		cfg.PersonMobile,          // principalMobile（法人手机号）
-		"100",                     // principalCertType：100 身份证
-		cfg.PersonCertNo,          // principalCertNo
-		cfg.PersonUsername,        // principalPerson
-		"2031-05-20 00:00:00",     // principalCertVld（证件有效期）
-		"460000",                  // province：海南省
-		"460100",                  // city：海口市
-		"460105",                  // district：秀英区
+		uploadFilesResult.DraftId,               // draftId（定位已有草稿）
+		[]string{"WICOIN_MYBANK_SPLIT_ACCOUNT"}, // productCode
+		cfg.PersonUsername,                      // legalName（自然人即姓名）
+		cfg.PersonUsername+"_更新",                // shortName（修改：加"_更新"后缀）
+		"01",                                    // merchantBaseType：01 自然人
+		"brand_other",                           // subRoleType：其他服务公司
+		"01",                                    // dealType：实体特约商户
+		"7299",                                  // mcc：其他生活服务
+		cfg.PersonMobile,                        // contactMobile
+		cfg.PersonUsername,                      // contactName
+		"test@example.com",                      // email
+		cfg.PersonMobile,                        // principalMobile（法人手机号）
+		"100",                                   // principalCertType：100 身份证
+		cfg.PersonCertNo,                        // principalCertNo
+		cfg.PersonUsername,                      // principalPerson
+		"2031-05-20 00:00:00",                   // principalCertVld（证件有效期）
+		"460000",                                // province：海南省
+		"460100",                                // city：海口市
+		"460105",                                // district：秀英区
 		"海南省海口市秀英区更新路XX号", // address（修改：地址变更）
 		cfg.PersonMobile,     // servicePhoneNo
 		"M",                  // personSex：M 男性
