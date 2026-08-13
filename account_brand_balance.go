@@ -23,12 +23,10 @@ func (x *BrandBalanceDto) GetTs() string {
 // partnerId / merchantNo / outTradeNo 为必填字段
 // （reqTimestamp 由 BrandBalance 方法自动填充）。
 func NewBrandBalanceDto(
-	partnerId string,
 	merchantNo string,
 	outTradeNo string,
 ) *BrandBalanceDto {
 	return &BrandBalanceDto{
-		PartnerId:  partnerId,
 		MerchantNo: merchantNo,
 		OutTradeNo: outTradeNo,
 	}
@@ -45,6 +43,7 @@ func NewBrandBalanceDto(
 //
 // 响应 bizData 为裸字符串（品牌商户订单管理专户余额，单位元）。
 func (x *Hst) BrandBalance(ctx context.Context, dto *BrandBalanceDto) (result *SignObjectRespResult[string], err error) {
+	dto.PartnerId = x.Option.ChannelId
 	dto.ReqTimestamp = strconv.FormatInt(time.Now().UnixMilli(), 10)
 
 	var signObjectReq *SignObjectReq

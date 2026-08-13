@@ -15,11 +15,7 @@ func TestAvailableBalance(t *testing.T) {
 	// outTradeNo 仅作请求标识记入日志，不参与查询、不做幂等，但不可为空
 	outTradeNo := fmt.Sprintf("Q%s", time.Now().Format("20060102150405"))
 
-	dto := hst.NewAvailableBalanceDto(
-		cfg.ChannelId,  // partnerId（渠道商 ID）
-		cfg.MerchantNo, // merchantNo（平台商户号）
-		outTradeNo,     // outTradeNo（外部请求流水号）
-	)
+	dto := hst.NewAvailableBalanceDto(outTradeNo)
 	result, err := client.AvailableBalance(ctx, dto)
 	if err != nil {
 		logResult(t, "account_available_balance", errorLogData{false, err.Error()})

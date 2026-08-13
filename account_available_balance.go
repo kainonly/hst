@@ -22,14 +22,8 @@ func (x *AvailableBalanceDto) GetTs() string {
 // NewAvailableBalanceDto 创建查询商户可用余额请求体。
 // partnerId / merchantNo / outTradeNo 为必填字段
 // （reqTimestamp 由 AvailableBalance 方法自动填充）。
-func NewAvailableBalanceDto(
-	partnerId string,
-	merchantNo string,
-	outTradeNo string,
-) *AvailableBalanceDto {
+func NewAvailableBalanceDto(outTradeNo string) *AvailableBalanceDto {
 	return &AvailableBalanceDto{
-		PartnerId:  partnerId,
-		MerchantNo: merchantNo,
 		OutTradeNo: outTradeNo,
 	}
 }
@@ -61,6 +55,8 @@ type AvailableBalanceBizData struct {
 // 注意：PENDING_BALANCE 是尚未解冻的待结算金额，不可提现。
 // 把 AVAILABLE_BALANCE 与 PENDING_BALANCE 相加当作可提现额度会导致提现申请以余额不足失败。
 func (x *Hst) AvailableBalance(ctx context.Context, dto *AvailableBalanceDto) (result *SignObjectRespResult[*AvailableBalanceBizData], err error) {
+	dto.MerchantNo = x.Option.MerchantNo
+	dto.PartnerId = x.Option.ChannelId
 	dto.ReqTimestamp = strconv.FormatInt(time.Now().UnixMilli(), 10)
 
 	var signObjectReq *SignObjectReq
