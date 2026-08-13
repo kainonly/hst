@@ -91,7 +91,6 @@ func (x *Hst) NewSignObjectReq(body Body) (signObjectReq *SignObjectReq, err err
 	if signObjectReq.Body, err = sonic.MarshalString(body); err != nil {
 		return
 	}
-	fmt.Println(signObjectReq.Body)
 	if signObjectReq.Signature, err = sm2Sign([]byte(signObjectReq.Body),
 		x.Option.PriKey, x.Option.ChannelId); err != nil {
 		return
@@ -126,7 +125,7 @@ type SignObjectResp struct {
 
 func (x *Hst) Request(ctx context.Context, path string, signObjectReq *SignObjectReq) (_ string, err error) {
 	var resp *resty.Response
-	if resp, err = x.Client.R().SetContext(ctx).SetDebug(true).
+	if resp, err = x.Client.R().SetContext(ctx).
 		SetBody(signObjectReq).
 		Post(path); err != nil {
 		return
