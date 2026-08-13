@@ -23,10 +23,7 @@ func TestTradeCancel(t *testing.T) {
 	)
 	result, err := client.TradeCancel(ctx, dto)
 	if err != nil {
-		logResult(t, "trade_cancel", map[string]any{
-			"bizSuccess": false,
-			"error":      err.Error(),
-		})
+		logResult(t, "trade_cancel", errorLogData{false, err.Error()})
 		t.Fatalf("TradeCancel 失败: %v", err)
 	}
 

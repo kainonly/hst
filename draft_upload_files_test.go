@@ -65,10 +65,7 @@ func TestUploadFiles(t *testing.T) {
 
 	result, err := client.UploadFiles(ctx, dto)
 	if err != nil {
-		logResult(t, "upload_files", map[string]any{
-			"bizSuccess": false,
-			"error":      err.Error(),
-		})
+		logResult(t, "upload_files", errorLogData{false, err.Error()})
 		t.Fatalf("UploadFiles 失败: %v", err)
 	}
 

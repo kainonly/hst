@@ -21,10 +21,7 @@ func TestBrandBalance(t *testing.T) {
 	)
 	result, err := client.BrandBalance(ctx, dto)
 	if err != nil {
-		logResult(t, "brand_balance", map[string]any{
-			"bizSuccess": false,
-			"error":      err.Error(),
-		})
+		logResult(t, "brand_balance", errorLogData{false, err.Error()})
 		t.Fatalf("BrandBalance 失败: %v", err)
 	}
 

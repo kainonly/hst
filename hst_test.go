@@ -69,6 +69,12 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+// errorLogData 错误日志结构，保持 JSON 字段顺序一致。
+type errorLogData struct {
+	BizSuccess bool   `json:"bizSuccess"`
+	Error      string `json:"error"`
+}
+
 // logResult 将业务结果写入 logs/<name>.log（追加模式）并在测试日志中展示。
 // result 为任意业务响应（含 BizSuccess/BizCode/BizMsg/BizData）。
 func logResult(t *testing.T, name string, result any) {

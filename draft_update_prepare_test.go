@@ -68,10 +68,7 @@ func TestUpdatePrepare(t *testing.T) {
 
 	result, err := client.UpdatePrepare(ctx, dto)
 	if err != nil {
-		logResult(t, "update_prepare", map[string]any{
-			"bizSuccess": false,
-			"error":      err.Error(),
-		})
+		logResult(t, "update_prepare", errorLogData{false, err.Error()})
 		t.Fatalf("UpdatePrepare 失败: %v", err)
 	}
 

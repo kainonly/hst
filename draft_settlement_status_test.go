@@ -22,10 +22,7 @@ func TestSettlementStatus(t *testing.T) {
 	dto := hst.NewSettlementStatusDto(confirmResult.DraftId)
 	result, err := client.SettlementStatus(ctx, dto)
 	if err != nil {
-		logResult(t, "settlement_status", map[string]any{
-			"bizSuccess": false,
-			"error":      err.Error(),
-		})
+		logResult(t, "settlement_status", errorLogData{false, err.Error()})
 		t.Fatalf("SettlementStatus 失败: %v", err)
 	}
 

@@ -21,10 +21,7 @@ func TestConfirm(t *testing.T) {
 	dto := hst.NewConfirmDto(uploadFilesResult.DraftId)
 	result, err := client.Confirm(ctx, dto)
 	if err != nil {
-		logResult(t, "confirm", map[string]any{
-			"bizSuccess": false,
-			"error":      err.Error(),
-		})
+		logResult(t, "confirm", errorLogData{false, err.Error()})
 		t.Fatalf("Confirm 失败: %v", err)
 	}
 

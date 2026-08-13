@@ -23,10 +23,7 @@ func TestGetUploadToken(t *testing.T) {
 	)
 	result, err := client.GetUploadToken(ctx, dto)
 	if err != nil {
-		logResult(t, "get_upload_token", map[string]any{
-			"bizSuccess": false,
-			"error":      err.Error(),
-		})
+		logResult(t, "get_upload_token", errorLogData{false, err.Error()})
 		t.Fatalf("GetUploadToken 失败: %v", err)
 	}
 

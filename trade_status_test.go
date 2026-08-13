@@ -23,10 +23,7 @@ func TestTradeStatus(t *testing.T) {
 	)
 	result, err := client.TradeStatus(ctx, dto)
 	if err != nil {
-		logResult(t, "trade_status", map[string]any{
-			"bizSuccess": false,
-			"error":      err.Error(),
-		})
+		logResult(t, "trade_status", errorLogData{false, err.Error()})
 		t.Fatalf("TradeStatus 失败: %v", err)
 	}
 

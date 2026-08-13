@@ -23,10 +23,7 @@ func TestTradeConfirm(t *testing.T) {
 	)
 	result, err := client.TradeConfirm(ctx, dto)
 	if err != nil {
-		logResult(t, "trade_confirm", map[string]any{
-			"bizSuccess": false,
-			"error":      err.Error(),
-		})
+		logResult(t, "trade_confirm", errorLogData{false, err.Error()})
 		t.Fatalf("TradeConfirm 失败: %v", err)
 	}
 

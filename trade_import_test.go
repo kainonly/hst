@@ -29,16 +29,16 @@ func TestTradeImport(t *testing.T) {
 
 	busId, err := client.TradeImport(ctx, dto)
 	if err != nil {
-		logResult(t, "trade_import", map[string]any{
-			"bizSuccess": false,
-			"error":      err.Error(),
-		})
+		logResult(t, "trade_import", errorLogData{false, err.Error()})
 		t.Fatalf("TradeImport 失败: %v", err)
 	}
 
-	// busId 是裸字符串，包装成结构写入日志
-	logResult(t, "trade_import", map[string]any{
-		"bizSuccess": true,
-		"bizData":    busId,
+	// busId 是裸字符串，用结构体包装写入日志（保持字段顺序一致）
+	logResult(t, "trade_import", struct {
+		BizSuccess bool   `json:"bizSuccess"`
+		BizData    string `json:"bizData"`
+	}{
+		BizSuccess: true,
+		BizData:    busId,
 	})
 }
