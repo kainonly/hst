@@ -55,7 +55,6 @@ type TradeQueryBizData struct {
 //   - UNKNOWN 须联系平台核实，不能自行判为失败
 func (x *Hst) TradeQuery(ctx context.Context, dto *TradeQueryDto) (result *SignObjectRespResult[*TradeQueryBizData], err error) {
 	dto.PartnerId = x.Option.ChannelId
-	dto.MerchantNo = x.Option.MerchantNo
 
 	var signObjectReq *SignObjectReq
 	if signObjectReq, err = x.NewSignObjectReq(dto); err != nil {

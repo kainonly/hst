@@ -16,15 +16,14 @@ func TestApply(t *testing.T) {
 	outWithdrawNo := fmt.Sprintf("W%s", time.Now().Format("20060102150405"))
 
 	dto := hst.NewApplyDto(
-		cfg.MerchantNo, // merchantNo
-		outWithdrawNo,  // outWithdrawNo（幂等键）
-		"1.00",         // totalAmount（单位元，精确到分）
+		cfg.SubMerchantNo[0], // merchantNo
+		outWithdrawNo,        // outWithdrawNo（幂等键）
+		"1.00",               // totalAmount（单位元，精确到分）
 	).SetRemark("测试提现")
 
 	result, err := client.Apply(ctx, dto)
 	if err != nil {
 		logResult(t, "withdrawal_apply", errorLogData{false, err.Error()})
-		t.Logf("Apply 返回错误（预期可能失败）: %v", err)
 		return
 	}
 

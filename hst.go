@@ -91,6 +91,7 @@ func (x *Hst) NewSignObjectReq(body Body) (signObjectReq *SignObjectReq, err err
 	if signObjectReq.Body, err = sonic.MarshalString(body); err != nil {
 		return
 	}
+	fmt.Println(signObjectReq.Body)
 	if signObjectReq.Signature, err = sm2Sign([]byte(signObjectReq.Body),
 		x.Option.PriKey, x.Option.ChannelId); err != nil {
 		return

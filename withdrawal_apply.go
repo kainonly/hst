@@ -68,7 +68,6 @@ type ApplyBizData struct {
 //   - outWithdrawNo 是幂等键，重复调用返回首次结果。
 func (x *Hst) Apply(ctx context.Context, dto *ApplyDto) (result *SignObjectRespResult[*ApplyBizData], err error) {
 	dto.PartnerId = x.Option.ChannelId
-	dto.MerchantNo = x.Option.MerchantNo
 
 	var signObjectReq *SignObjectReq
 	if signObjectReq, err = x.NewSignObjectReq(dto); err != nil {
