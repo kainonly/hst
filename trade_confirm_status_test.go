@@ -15,7 +15,7 @@ func TestTradeConfirm(t *testing.T) {
 	readLastLogBizData(t, "trade_import", &busId)
 	t.Logf("从 trade_import 日志读取到 busId: %s", busId)
 
-	dto := hst.NewTradeConfirmDto(cfg.ChannelId, cfg.MerchantNo, busId)
+	dto := hst.NewTradeConfirmDto(busId)
 	result, err := client.TradeConfirm(ctx, dto)
 	if err != nil {
 		logResult(t, "trade_confirm", errorLogData{false, err.Error()})
@@ -32,7 +32,7 @@ func TestTradeStatus(t *testing.T) {
 	readLastLogBizData(t, "trade_import", &busId)
 	t.Logf("从 trade_import 日志读取到 busId: %s", busId)
 
-	dto := hst.NewTradeStatusDto(cfg.ChannelId, cfg.MerchantNo, busId)
+	dto := hst.NewTradeStatusDto(busId)
 	result, err := client.TradeStatus(ctx, dto)
 	if err != nil {
 		logResult(t, "trade_status", errorLogData{false, err.Error()})

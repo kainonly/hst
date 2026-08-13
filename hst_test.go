@@ -33,6 +33,8 @@ type ConfigMap struct {
 	EncryptKey string `yaml:"encrypt_key"`  // 加密密钥
 	MerchantNo string `yaml:"merchant_no"`  // 商户号
 	ChannelId  string `yaml:"channel_id"`   // 客户端身份标识
+	// 子商户测试信息
+	SubMerchantNo []string `yaml:"sub_merchant_no"` // 子商户号列表
 	// 自然人商户测试挡板信息
 	PersonMobile        string `yaml:"person_mobile"`         // 手机号
 	PersonCertNo        string `yaml:"person_cert_no"`        // 证件号码

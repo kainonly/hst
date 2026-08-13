@@ -33,12 +33,8 @@ type UploadFilesDto struct {
 }
 
 // NewUploadFilesDto 创建上传资质文件请求体。
-// channelId / uploadToken 为必填字段。
-func NewUploadFilesDto(channelId string, uploadToken string) *UploadFilesDto {
-	return &UploadFilesDto{
-		ChannelId:   channelId,
-		UploadToken: uploadToken,
-	}
+func NewUploadFilesDto(uploadToken string) *UploadFilesDto {
+	return &UploadFilesDto{UploadToken: uploadToken}
 }
 
 // SetCertPhotoAFiles 设置身份证人像面文件路径列表。
@@ -253,6 +249,8 @@ type UploadFilesRespData struct {
 // 与标准 JSON 加密流程相互独立，响应为普通 JSON（非加密信封）。
 // uploadToken 为一次性凭证，无论本次上传成功与否都会被消费；上传失败需从 Step 1 重新开始。
 func (x *Hst) UploadFiles(ctx context.Context, dto *UploadFilesDto) (bizData *UploadFilesBizData, err error) {
+	dto.ChannelId = x.Option.ChannelId
+
 	// channel-multi-file 前缀，拼接完整 URL
 	uploadURL := x.Option.BaseURL + "/channel-multi-file/merchant_info_draft/upload_files"
 	var resp *resty.Response

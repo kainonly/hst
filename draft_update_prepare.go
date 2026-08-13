@@ -74,7 +74,6 @@ func (x *UpdatePrepareDto) GetTs() string {
 }
 
 // NewUpdatePrepareDto 创建更新草稿并申请上传凭证请求体。
-// 必填字段作为参数传入（reqTimestamp / channelNo 由 UpdatePrepare 方法自动填充）。
 // fileManifest 可传 nil（无新文件时）。
 func NewUpdatePrepareDto(
 	draftId string,
@@ -153,6 +152,7 @@ func NewUpdatePrepareDto(
 		LogonId:               logonId,
 		UserId:                userId,
 		FileManifest:          fileManifest,
+		ReqTimestamp:          strconv.FormatInt(time.Now().UnixMilli(), 10),
 	}
 }
 
@@ -276,7 +276,6 @@ type UpdatePrepareBizData struct {
 }
 
 func (x *Hst) UpdatePrepare(ctx context.Context, dto *UpdatePrepareDto) (result *SignObjectRespResult[*UpdatePrepareBizData], err error) {
-	dto.ReqTimestamp = strconv.FormatInt(time.Now().UnixMilli(), 10)
 	dto.ChannelNo = x.Option.ChannelId
 
 	var signObjectReq *SignObjectReq

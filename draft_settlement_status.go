@@ -19,7 +19,10 @@ func (x *SettlementStatusDto) GetTs() string {
 }
 
 func NewSettlementStatusDto(draftId string) *SettlementStatusDto {
-	return &SettlementStatusDto{DraftId: draftId}
+	return &SettlementStatusDto{
+		DraftId:      draftId,
+		ReqTimestamp: strconv.FormatInt(time.Now().UnixMilli(), 10),
+	}
 }
 
 type SettlementStatusBizData struct {
@@ -35,7 +38,6 @@ type SettlementStatusBizData struct {
 }
 
 func (x *Hst) SettlementStatus(ctx context.Context, dto *SettlementStatusDto) (result *SignObjectRespResult[*SettlementStatusBizData], err error) {
-	dto.ReqTimestamp = strconv.FormatInt(time.Now().UnixMilli(), 10)
 	dto.ChannelNo = x.Option.ChannelId
 
 	var signObjectReq *SignObjectReq
@@ -48,6 +50,7 @@ func (x *Hst) SettlementStatus(ctx context.Context, dto *SettlementStatusDto) (r
 		"/channel/merchant_info_draft/settlement_status", signObjectReq); err != nil {
 		return
 	}
+
 	if err = sonic.UnmarshalString(b, &result); err != nil {
 		return
 	}

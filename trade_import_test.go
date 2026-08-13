@@ -20,11 +20,7 @@ func TestTradeImport(t *testing.T) {
 	t.Logf("从 get_upload_token 日志读取到 uploadToken: %s", getTokenResult.UploadToken)
 
 	filePath := filepath.Join("files", "trade.xlsx")
-	dto := hst.NewTradeImportDto(
-		cfg.ChannelId,
-		getTokenResult.UploadToken,
-		filePath,
-	)
+	dto := hst.NewTradeImportDto(getTokenResult.UploadToken, filePath)
 	busId, err := client.TradeImport(ctx, dto)
 	if err != nil {
 		logResult(t, "trade_import", errorLogData{false, err.Error()})
@@ -45,11 +41,7 @@ func TestTradeImport2(t *testing.T) {
 	t.Logf("从 get_upload_token_2 日志读取到 uploadToken: %s", getTokenResult.UploadToken)
 
 	filePath := filepath.Join("files", "trade-2.xlsx")
-	dto := hst.NewTradeImportDto(
-		cfg.ChannelId,
-		getTokenResult.UploadToken,
-		filePath,
-	)
+	dto := hst.NewTradeImportDto(getTokenResult.UploadToken, filePath)
 	busId, err := client.TradeImport(ctx, dto)
 	if err != nil {
 		logResult(t, "trade_import_2", errorLogData{false, err.Error()})

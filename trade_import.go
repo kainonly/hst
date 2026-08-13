@@ -18,10 +18,8 @@ type TradeImportDto struct {
 }
 
 // NewTradeImportDto 创建上传交易订单文件请求体。
-// channelId / uploadToken / filePath 为必填字段。
-func NewTradeImportDto(channelId string, uploadToken string, filePath string) *TradeImportDto {
+func NewTradeImportDto(uploadToken string, filePath string) *TradeImportDto {
 	return &TradeImportDto{
-		ChannelId:   channelId,
 		UploadToken: uploadToken,
 		FilePath:    filePath,
 	}
@@ -63,6 +61,8 @@ type TradeImportRespData struct {
 // uploadToken 为一次性凭证，无论上传成功与否都会被消费；上传失败需从 Step 1 重新开始。
 // 返回 busId，用于后续确认 / 查询 / 取消。
 func (x *Hst) TradeImport(ctx context.Context, dto *TradeImportDto) (busId string, err error) {
+	dto.ChannelId = x.Option.ChannelId
+
 	// channel-file 前缀，拼接完整 URL
 	importURL := x.Option.BaseURL + "/channel-file/doc-trade-file/import"
 	var resp *resty.Response

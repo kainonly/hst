@@ -7,6 +7,7 @@ configs:
     encrypt_key: <your_encrypt_key_hex>
     merchant_no:
     channel_id:
+    sub_merchant_no:
     # 自然人商户测试挡板信息
     person_mobile: ""
     person_cert_no: ""

@@ -20,17 +20,10 @@ func (x *TradeStatusDto) GetTs() string {
 }
 
 // NewTradeStatusDto 创建查询主记录状态请求体。
-// partnerId / merchantId / busId 为必填字段
-// （reqTimestamp 由 TradeStatus 方法自动填充）。
-func NewTradeStatusDto(
-	partnerId string,
-	merchantId string,
-	busId string,
-) *TradeStatusDto {
+func NewTradeStatusDto(busId string) *TradeStatusDto {
 	return &TradeStatusDto{
-		PartnerId:  partnerId,
-		MerchantId: merchantId,
-		BusId:      busId,
+		BusId:        busId,
+		ReqTimestamp: strconv.FormatInt(time.Now().UnixMilli(), 10),
 	}
 }
 
@@ -62,7 +55,8 @@ type TradeStatusBizData struct {
 //   - 确认补单（/confirm）之前，明细均处于待确认状态，此时 processingAmount 即为本批次的待确认总金额。
 //   - 批次下无明细时返回 "0.00"，不会返回 null。
 func (x *Hst) TradeStatus(ctx context.Context, dto *TradeStatusDto) (result *SignObjectRespResult[*TradeStatusBizData], err error) {
-	dto.ReqTimestamp = strconv.FormatInt(time.Now().UnixMilli(), 10)
+	dto.PartnerId = x.Option.ChannelId
+	dto.MerchantId = x.Option.MerchantNo
 
 	var signObjectReq *SignObjectReq
 	if signObjectReq, err = x.NewSignObjectReq(dto); err != nil {

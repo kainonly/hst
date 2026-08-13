@@ -19,7 +19,10 @@ func (x *ConfirmDto) GetTs() string {
 }
 
 func NewConfirmDto(draftId string) *ConfirmDto {
-	return &ConfirmDto{DraftId: draftId}
+	return &ConfirmDto{
+		DraftId:      draftId,
+		ReqTimestamp: strconv.FormatInt(time.Now().UnixMilli(), 10),
+	}
 }
 
 // ConfirmBizData 确认提交草稿响应 bizData（MerchantInfoDraftVO 草稿视图对象）。
@@ -106,7 +109,6 @@ type ConfirmBizData struct {
 // 触发商户入驻申请。确认后草稿状态变更为 CONFIRMED 或 FAILED；
 // 若为 FAILED，可通过 UpdatePrepare 修改后重新走两步上传流程再次确认。
 func (x *Hst) Confirm(ctx context.Context, dto *ConfirmDto) (result *SignObjectRespResult[*ConfirmBizData], err error) {
-	dto.ReqTimestamp = strconv.FormatInt(time.Now().UnixMilli(), 10)
 	dto.ChannelNo = x.Option.ChannelId
 
 	var signObjectReq *SignObjectReq

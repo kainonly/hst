@@ -40,7 +40,7 @@ func TestUploadFiles(t *testing.T) {
 		sourceLog, prepareResult.UploadToken, prepareResult.FileFields)
 
 	// 构造上传 DTO，只上传 prepare 的 fileManifest 中声明且本地有对应文件的字段
-	dto := hst.NewUploadFilesDto(cfg.ChannelId, prepareResult.UploadToken)
+	dto := hst.NewUploadFilesDto(prepareResult.UploadToken)
 	for _, fieldName := range prepareResult.FileFields {
 		filePath, ok := fileFieldMap[fieldName]
 		if !ok {

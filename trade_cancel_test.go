@@ -15,7 +15,7 @@ func TestTradeCancel(t *testing.T) {
 	readLastLogBizData(t, "trade_import_2", &busId)
 	t.Logf("从 trade_import_2 日志读取到 busId: %s", busId)
 
-	dto := hst.NewTradeCancelDto(cfg.ChannelId, cfg.MerchantNo, busId)
+	dto := hst.NewTradeCancelDto(busId)
 	result, err := client.TradeCancel(ctx, dto)
 	if err != nil {
 		logResult(t, "trade_cancel", errorLogData{false, err.Error()})
@@ -31,11 +31,11 @@ func TestTradeStatus2(t *testing.T) {
 	readLastLogBizData(t, "trade_import_2", &busId)
 	t.Logf("从 trade_import 日志读取到 busId: %s", busId)
 
-	dto := hst.NewTradeStatusDto(cfg.ChannelId, cfg.MerchantNo, busId)
+	dto := hst.NewTradeStatusDto(busId)
 	result, err := client.TradeStatus(ctx, dto)
 	if err != nil {
-		logResult(t, "trade_status", errorLogData{false, err.Error()})
-		t.Fatalf("TradeStatus 失败: %v", err)
+		logResult(t, "trade_status_2", errorLogData{false, err.Error()})
+		t.Fatalf("TradeStatus2 失败: %v", err)
 	}
-	logResult(t, "trade_status", result)
+	logResult(t, "trade_status_2", result)
 }

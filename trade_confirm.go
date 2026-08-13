@@ -20,17 +20,10 @@ func (x *TradeConfirmDto) GetTs() string {
 }
 
 // NewTradeConfirmDto 创建确认导入请求体。
-// partnerId / merchantId / busId 为必填字段
-// （reqTimestamp 由 TradeConfirm 方法自动填充）。
-func NewTradeConfirmDto(
-	partnerId string,
-	merchantId string,
-	busId string,
-) *TradeConfirmDto {
+func NewTradeConfirmDto(busId string) *TradeConfirmDto {
 	return &TradeConfirmDto{
-		PartnerId:  partnerId,
-		MerchantId: merchantId,
-		BusId:      busId,
+		ReqTimestamp: strconv.FormatInt(time.Now().UnixMilli(), 10),
+		BusId:        busId,
 	}
 }
 
@@ -39,7 +32,8 @@ func NewTradeConfirmDto(
 // 文件仍在解析中（docStatus = IMPORTING 或明细数未就绪）时不允许确认。
 // 响应 bizData 为布尔值，true 表示确认成功。
 func (x *Hst) TradeConfirm(ctx context.Context, dto *TradeConfirmDto) (result *SignObjectRespResult[bool], err error) {
-	dto.ReqTimestamp = strconv.FormatInt(time.Now().UnixMilli(), 10)
+	dto.PartnerId = x.Option.ChannelId
+	dto.MerchantId = x.Option.MerchantNo
 
 	var signObjectReq *SignObjectReq
 	if signObjectReq, err = x.NewSignObjectReq(dto); err != nil {

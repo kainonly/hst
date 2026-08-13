@@ -20,17 +20,10 @@ func (x *TradeCancelDto) GetTs() string {
 }
 
 // NewTradeCancelDto 创建取消导入请求体。
-// partnerId / merchantId / busId 为必填字段
-// （reqTimestamp 由 TradeCancel 方法自动填充）。
-func NewTradeCancelDto(
-	partnerId string,
-	merchantId string,
-	busId string,
-) *TradeCancelDto {
+func NewTradeCancelDto(busId string) *TradeCancelDto {
 	return &TradeCancelDto{
-		PartnerId:  partnerId,
-		MerchantId: merchantId,
-		BusId:      busId,
+		ReqTimestamp: strconv.FormatInt(time.Now().UnixMilli(), 10),
+		BusId:        busId,
 	}
 }
 
@@ -38,7 +31,8 @@ func NewTradeCancelDto(
 // 取消尚未确认的文档交易导入批次。
 // 响应 bizData 为布尔值，true 表示取消成功。
 func (x *Hst) TradeCancel(ctx context.Context, dto *TradeCancelDto) (result *SignObjectRespResult[bool], err error) {
-	dto.ReqTimestamp = strconv.FormatInt(time.Now().UnixMilli(), 10)
+	dto.PartnerId = x.Option.ChannelId
+	dto.MerchantId = x.Option.MerchantNo
 
 	var signObjectReq *SignObjectReq
 	if signObjectReq, err = x.NewSignObjectReq(dto); err != nil {

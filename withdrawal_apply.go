@@ -22,19 +22,16 @@ func (x *ApplyDto) GetTs() string {
 }
 
 // NewApplyDto 创建商户提现申请请求体。
-// partnerId / merchantNo / outWithdrawNo / totalAmount 为必填字段
-// （reqTimestamp 由 Apply 方法自动填充）。
 func NewApplyDto(
-	partnerId string,
 	merchantNo string,
 	outWithdrawNo string,
 	totalAmount string,
 ) *ApplyDto {
 	return &ApplyDto{
-		PartnerId:     partnerId,
 		MerchantNo:    merchantNo,
 		OutWithdrawNo: outWithdrawNo,
 		TotalAmount:   totalAmount,
+		ReqTimestamp:  strconv.FormatInt(time.Now().UnixMilli(), 10),
 	}
 }
 
@@ -70,7 +67,8 @@ type ApplyBizData struct {
 //     换一个单号重发等于再提现一笔。
 //   - outWithdrawNo 是幂等键，重复调用返回首次结果。
 func (x *Hst) Apply(ctx context.Context, dto *ApplyDto) (result *SignObjectRespResult[*ApplyBizData], err error) {
-	dto.ReqTimestamp = strconv.FormatInt(time.Now().UnixMilli(), 10)
+	dto.PartnerId = x.Option.ChannelId
+	dto.MerchantNo = x.Option.MerchantNo
 
 	var signObjectReq *SignObjectReq
 	if signObjectReq, err = x.NewSignObjectReq(dto); err != nil {

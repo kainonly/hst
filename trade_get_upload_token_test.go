@@ -21,8 +21,6 @@ func TestGetUploadToken(t *testing.T) {
 	fileSM3Hash := sm3HashFile(t, filePath)
 
 	dto := hst.NewGetUploadTokenDto(
-		cfg.ChannelId,  // partnerId（渠道商 ID）
-		cfg.MerchantNo, // merchantId（商户 ID）
 		"trade.xlsx",
 		fileSM3Hash,
 	)
@@ -41,8 +39,6 @@ func TestGetUploadToken2(t *testing.T) {
 	fileSM3Hash := sm3HashFile(t, filePath)
 
 	dto := hst.NewGetUploadTokenDto(
-		cfg.ChannelId,
-		cfg.MerchantNo,
 		"trade-2.xlsx",
 		fileSM3Hash,
 	)

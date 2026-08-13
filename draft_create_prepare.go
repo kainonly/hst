@@ -73,7 +73,6 @@ func (x *CreatePrepareDto) GetTs() string {
 }
 
 // NewCreatePrepareDto 创建创建草稿并申请上传凭证请求体。
-// 必填字段作为参数传入（reqTimestamp / channelNo 由 CreatePrepare 方法自动填充）。
 func NewCreatePrepareDto(
 	productCode []string,
 	legalName string,
@@ -149,6 +148,7 @@ func NewCreatePrepareDto(
 		LogonId:               logonId,
 		UserId:                userId,
 		FileManifest:          fileManifest,
+		ReqTimestamp:          strconv.FormatInt(time.Now().UnixMilli(), 10),
 	}
 }
 
@@ -272,7 +272,6 @@ type CreatePrepareBizData struct {
 }
 
 func (x *Hst) CreatePrepare(ctx context.Context, dto *CreatePrepareDto) (result *SignObjectRespResult[*CreatePrepareBizData], err error) {
-	dto.ReqTimestamp = strconv.FormatInt(time.Now().UnixMilli(), 10)
 	dto.ChannelNo = x.Option.ChannelId
 
 	var signObjectReq *SignObjectReq

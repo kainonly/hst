@@ -6,13 +6,14 @@ import (
 	"time"
 
 	"github.com/bytedance/sonic"
+	"github.com/kainonly/go/help"
 )
 
 type BrandBalanceDto struct {
 	ReqTimestamp string `json:"reqTimestamp"` // 业务请求时间戳，须与外层信封 timestamp 一致（防重放）
 	PartnerId    string `json:"partnerId"`    // 渠道商 ID（与信封 channelId 不是同一个字段，必须显式传入）
 	MerchantNo   string `json:"merchantNo"`   // 平台商户号，须归属于 partnerId（仅用于定位其所属的平台配置，查的不是该商户自己的账户）
-	OutTradeNo   string `json:"outTradeNo"`   // 外部请求流水号（仅作请求标识记入日志，不参与查询、不做幂等，但不可为空）
+	OutTradeNo   string `json:"outTradeNo"`   // 外部请求流水号（仅作请求标识记入日志，不参与查询、不做幂等）
 }
 
 func (x *BrandBalanceDto) GetTs() string {
@@ -20,15 +21,11 @@ func (x *BrandBalanceDto) GetTs() string {
 }
 
 // NewBrandBalanceDto 创建查询品牌商户订单管理专户余额请求体。
-// partnerId / merchantNo / outTradeNo 为必填字段
-// （reqTimestamp 由 BrandBalance 方法自动填充）。
-func NewBrandBalanceDto(
-	merchantNo string,
-	outTradeNo string,
-) *BrandBalanceDto {
+func NewBrandBalanceDto(merchantNo string) *BrandBalanceDto {
 	return &BrandBalanceDto{
-		MerchantNo: merchantNo,
-		OutTradeNo: outTradeNo,
+		ReqTimestamp: strconv.FormatInt(time.Now().UnixMilli(), 10),
+		MerchantNo:   merchantNo,
+		OutTradeNo:   help.SID(),
 	}
 }
 
@@ -44,7 +41,6 @@ func NewBrandBalanceDto(
 // 响应 bizData 为裸字符串（品牌商户订单管理专户余额，单位元）。
 func (x *Hst) BrandBalance(ctx context.Context, dto *BrandBalanceDto) (result *SignObjectRespResult[string], err error) {
 	dto.PartnerId = x.Option.ChannelId
-	dto.ReqTimestamp = strconv.FormatInt(time.Now().UnixMilli(), 10)
 
 	var signObjectReq *SignObjectReq
 	if signObjectReq, err = x.NewSignObjectReq(dto); err != nil {

@@ -21,19 +21,11 @@ func (x *GetUploadTokenDto) GetTs() string {
 }
 
 // NewGetUploadTokenDto 创建申请文件上传凭证请求体。
-// partnerId / merchantId / fileName / fileSM3Hash 为必填字段
-// （reqTimestamp 由 GetUploadToken 方法自动填充）。
-func NewGetUploadTokenDto(
-	partnerId string,
-	merchantId string,
-	fileName string,
-	fileSM3Hash string,
-) *GetUploadTokenDto {
+func NewGetUploadTokenDto(fileName string, fileSM3Hash string) *GetUploadTokenDto {
 	return &GetUploadTokenDto{
-		PartnerId:   partnerId,
-		MerchantId:  merchantId,
-		FileName:    fileName,
-		FileSM3Hash: fileSM3Hash,
+		ReqTimestamp: strconv.FormatInt(time.Now().UnixMilli(), 10),
+		FileName:     fileName,
+		FileSM3Hash:  fileSM3Hash,
 	}
 }
 
@@ -46,7 +38,8 @@ type GetUploadTokenBizData struct {
 // 客户端预先计算文件 SM3 哈希并纳入签名体，服务端生成一次性 uploadToken（默认有效期 5 分钟）。
 // uploadToken 一次性消费，无论上传成功与否都会失效；过期或失败需重新申请。
 func (x *Hst) GetUploadToken(ctx context.Context, dto *GetUploadTokenDto) (result *SignObjectRespResult[*GetUploadTokenBizData], err error) {
-	dto.ReqTimestamp = strconv.FormatInt(time.Now().UnixMilli(), 10)
+	dto.PartnerId = x.Option.ChannelId
+	dto.MerchantId = x.Option.MerchantNo
 
 	var signObjectReq *SignObjectReq
 	if signObjectReq, err = x.NewSignObjectReq(dto); err != nil {

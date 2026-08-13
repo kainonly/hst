@@ -20,17 +20,14 @@ func (x *TradeQueryDto) GetTs() string {
 }
 
 // NewTradeQueryDto 创建查询提现订单请求体。
-// partnerId / merchantNo / outWithdrawNo 为必填字段
-// （reqTimestamp 由 TradeQuery 方法自动填充）。
 func NewTradeQueryDto(
-	partnerId string,
 	merchantNo string,
 	outWithdrawNo string,
 ) *TradeQueryDto {
 	return &TradeQueryDto{
-		PartnerId:     partnerId,
 		MerchantNo:    merchantNo,
 		OutWithdrawNo: outWithdrawNo,
+		ReqTimestamp:  strconv.FormatInt(time.Now().UnixMilli(), 10),
 	}
 }
 
@@ -57,7 +54,8 @@ type TradeQueryBizData struct {
 //   - DEALING / WAIT_CONFIRM 都是中间态，须继续轮询
 //   - UNKNOWN 须联系平台核实，不能自行判为失败
 func (x *Hst) TradeQuery(ctx context.Context, dto *TradeQueryDto) (result *SignObjectRespResult[*TradeQueryBizData], err error) {
-	dto.ReqTimestamp = strconv.FormatInt(time.Now().UnixMilli(), 10)
+	dto.PartnerId = x.Option.ChannelId
+	dto.MerchantNo = x.Option.MerchantNo
 
 	var signObjectReq *SignObjectReq
 	if signObjectReq, err = x.NewSignObjectReq(dto); err != nil {

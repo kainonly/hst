@@ -2,9 +2,7 @@ package hst_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
-	"time"
 
 	"github.com/kainonly/hst"
 )
@@ -12,12 +10,7 @@ import (
 func TestBrandBalance(t *testing.T) {
 	ctx := context.Background()
 
-	outTradeNo := fmt.Sprintf("Q%s", time.Now().Format("20060102150405"))
-
-	dto := hst.NewBrandBalanceDto(
-		cfg.MerchantNo, // merchantNo（仅用于定位其所属平台配置）
-		outTradeNo,     // outTradeNo（外部请求流水号）
-	)
+	dto := hst.NewBrandBalanceDto(cfg.MerchantNo)
 	result, err := client.BrandBalance(ctx, dto)
 	if err != nil {
 		logResult(t, "account_brand_balance", errorLogData{false, err.Error()})
@@ -30,12 +23,8 @@ func TestBrandBalance(t *testing.T) {
 func TestBrandBalanceSub(t *testing.T) {
 	ctx := context.Background()
 
-	outTradeNo := fmt.Sprintf("Q%s", time.Now().Format("20060102150405"))
-
-	dto := hst.NewBrandBalanceDto(
-		`MC202608121631542087457034356678656`, // merchantNo（仅用于定位其所属平台配置）
-		outTradeNo,                            // outTradeNo（外部请求流水号）
-	)
+	sub := cfg.SubMerchantNo[0]
+	dto := hst.NewBrandBalanceDto(sub)
 	result, err := client.BrandBalance(ctx, dto)
 	if err != nil {
 		logResult(t, "account_brand_balance", errorLogData{false, err.Error()})
