@@ -22,9 +22,9 @@ func TestAvailableBalance(t *testing.T) {
 	)
 	result, err := client.AvailableBalance(ctx, dto)
 	if err != nil {
-		logResult(t, "available_balance", errorLogData{false, err.Error()})
+		logResult(t, "account_available_balance", errorLogData{false, err.Error()})
 		t.Fatalf("AvailableBalance 失败: %v", err)
 	}
 
-	logResult(t, "available_balance", result)
+	logResult(t, "account_available_balance", result)
 }

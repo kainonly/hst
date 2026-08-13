@@ -21,9 +21,9 @@ func TestBrandBalance(t *testing.T) {
 	)
 	result, err := client.BrandBalance(ctx, dto)
 	if err != nil {
-		logResult(t, "brand_balance", errorLogData{false, err.Error()})
+		logResult(t, "account_brand_balance", errorLogData{false, err.Error()})
 		t.Fatalf("BrandBalance 失败: %v", err)
 	}
 
-	logResult(t, "brand_balance", result)
+	logResult(t, "account_brand_balance", result)
 }
