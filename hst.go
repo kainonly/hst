@@ -45,6 +45,7 @@ type Hst struct {
 }
 
 type Option struct {
+	Debug      bool   `yaml:"debug"`
 	BaseURL    string `yaml:"base_url"`
 	PriKey     string `yaml:"pri_key"`      // 客户端私钥
 	WicoPubKey string `yaml:"wico_pub_key"` // 支付中心公钥
@@ -54,7 +55,7 @@ type Option struct {
 }
 
 func NewHst(option *Option) (x *Hst, err error) {
-	client := resty.New().SetBaseURL(option.BaseURL)
+	client := resty.New().SetBaseURL(option.BaseURL).SetDebug(option.Debug)
 	client.AddContentTypeEncoder("application/json", jsonEncoder)
 	client.AddContentTypeDecoder("application/json", jsonDecoder)
 
@@ -91,7 +92,6 @@ func (x *Hst) NewSignObjectReq(body Body) (signObjectReq *SignObjectReq, err err
 	if signObjectReq.Body, err = sonic.MarshalString(body); err != nil {
 		return
 	}
-	fmt.Println(signObjectReq.Body)
 	if signObjectReq.Signature, err = sm2Sign([]byte(signObjectReq.Body),
 		x.Option.PriKey, x.Option.ChannelId); err != nil {
 		return
@@ -132,26 +132,26 @@ func (x *Hst) Request(ctx context.Context, path string, signObjectReq *SignObjec
 		return
 	}
 
-	if resp.StatusCode() != 200 {
-		err = help.E(0, `第三方接口响应失败!`)
-		return
-	}
-
 	var signObjectResp *SignObjectResp
 	if err = sonic.Unmarshal(resp.Bytes(), &signObjectResp); err != nil {
 		return
 	}
-
 	ctx = context.WithValue(ctx, "resp", signObjectResp)
+
+	if resp.StatusCode() != 200 {
+		err = help.E(0, fmt.Sprintf(`txn=%s code=%s，%s`,
+			signObjectResp.ClientReqTxn, signObjectResp.Code, signObjectResp.Msg))
+		return
+	}
 	if signObjectResp.Code != "SUCCESS" {
-		err = help.E(0, fmt.Sprintf(`第三方接口响应失败! code=%s msg=%s`,
-			signObjectResp.Code, signObjectResp.Msg))
+		err = help.E(0, fmt.Sprintf(`txn=%s code=%s，%s`,
+			signObjectResp.ClientReqTxn, signObjectResp.Code, signObjectResp.Msg))
 		return
 	}
 	if err = x.decryptAndVerify(signObjectResp); err != nil {
 		return
 	}
-	fmt.Println(signObjectResp.Body)
+
 	return signObjectResp.Body, nil
 }
 
@@ -168,7 +168,6 @@ func (x *Hst) decryptAndVerify(signObjectResp *SignObjectResp) (err error) {
 	keyBytes, err = hex.DecodeString(x.Option.EncryptKey)
 	var decrypted []byte
 	if decrypted, err = sm4DecryptCBCPadding(encryptedBytes, keyBytes, ivBytes); err != nil {
-		err = help.E(0, `第三方接口响应解密失败!`)
 		return
 	}
 	signObjectResp.Body = string(decrypted)
@@ -183,8 +182,9 @@ func (x *Hst) decryptAndVerify(signObjectResp *SignObjectResp) (err error) {
 	); err != nil {
 		return
 	}
+
 	if !verified {
-		err = help.E(0, `第三方接口响应签名验证失败!`)
+		err = help.E(0, fmt.Sprintf(`txn=%s，签名验证失败`, signObjectResp.ClientReqTxn))
 	}
 	return
 }
@@ -198,7 +198,7 @@ type SignObjectRespResult[T any] struct {
 
 // bizError 构造业务层错误，统一格式：第三方接口业务失败! bizCode=%s bizMsg=%s
 func bizError(bizCode, bizMsg string) error {
-	return help.E(0, fmt.Sprintf(`第三方接口业务失败! bizCode=%s bizMsg=%s`, bizCode, bizMsg))
+	return help.E(0, fmt.Sprintf(`bizCode=%s bizMsg=%s`, bizCode, bizMsg))
 }
 
 // FileManifest 文件哈希清单。

@@ -9,63 +9,63 @@ import (
 )
 
 type CreatePrepareDto struct {
-	ReqTimestamp          string        `json:"reqTimestamp"`          // 业务请求时间戳，须与外层信封 timestamp 一致（防重放）
-	ChannelNo             string        `json:"channelNo"`             // 渠道号
-	ProductCode           []string      `json:"productCode"`           // 已选产品编码列表（WiCoinProductCode 枚举）
-	LegalName             string        `json:"legalName"`             // 法定名称（营业执照上的公司名称）
-	ShortName             string        `json:"shortName"`             // 商户简称 / 常用名
-	MerchantBaseType      string        `json:"merchantBaseType"`      // 商户类型：01(自然人)/02(个体工商户)/03(企业商户)
-	SubRoleType           string        `json:"subRoleType"`           // 商户角色
-	DealType              string        `json:"dealType"`              // 商户经营类型：01(实体特约)/02(网络特约)/03(实体兼网络特约)
-	Mcc                   string        `json:"mcc"`                   // 经营类目（MCC 码）
-	ContactMobile         string        `json:"contactMobile"`         // 联系人手机号
-	ContactName           string        `json:"contactName"`           // 联系人姓名
-	Email                 string        `json:"email"`                 // 联系人邮箱
-	PrincipalMobile       string        `json:"principalMobile"`       // 负责人手机号（即法人手机号）
-	PrincipalCertType     string        `json:"principalCertType"`     // 负责人证件类型
-	PrincipalCertNo       string        `json:"principalCertNo"`       // 负责人证件号码
-	PrincipalPerson       string        `json:"principalPerson"`       // 负责人名称或企业法人代表姓名
-	PrincipalCertVld      string        `json:"principalCertVld"`      // 负责人证件有效期，格式 yyyy-MM-dd HH:mm:ss
-	MangerLogonId         string        `json:"mangerLogonId"`         // 管理员支付宝登录号
-	Province              string        `json:"province"`              // 省份（国标省市区号）
-	City                  string        `json:"city"`                  // 城市（国标省市区号）
-	District              string        `json:"district"`              // 区（国标省市区号）
-	Address               string        `json:"address"`               // 详细地址
-	ServicePhoneNo        string        `json:"servicePhoneNo"`        // 商户客服电话
-	TaxNum                string        `json:"taxNum"`                // 税务登记证号码
-	BussAuthVld           string        `json:"bussAuthVld"`           // 营业执照有效期，格式 yyyy-MM-dd HH:mm:ss
-	ShareholderName       string        `json:"shareholderName"`       // 控股股东或实际控制人姓名
-	ShareholderCertType   string        `json:"shareholderCertType"`   // 控股股东或实际控制人证件类型
-	ShareholderCertNo     string        `json:"shareholderCertNo"`     // 控股股东或实际控制人证件号码
-	ShareholderCertVld    string        `json:"shareholderCertVld"`    // 控股股东或实际控制人证件有效期，格式 yyyy-MM-dd HH:mm:ss
-	PersonSex             string        `json:"personSex"`             // 性别（自然人商户）：M(男性)/F(女性)
-	PersonProfession      string        `json:"personProfession"`      // 职业（自然人商户）
-	PersonCertVld         string        `json:"personCertVld"`         // 身份证件有效期限（自然人商户），格式 yyyy-MM-dd HH:mm:ss
-	BussAuthType          string        `json:"bussAuthType"`          // 营业执照证件类型
-	BussAuthNo            string        `json:"bussAuthNo"`            // 证件号码（营业执照号或统一社会信用代码）
-	Remark                string        `json:"remark"`                // 备注
-	PartnerId             string        `json:"partnerId"`             // 渠道商 ID
-	MerchantType          string        `json:"merchantType"`          // 商户业务类型，如 SCHOOL、GROUP_MEAL、HR 等
-	AgreementNo           string        `json:"agreementNo"`           // 支付宝签约记录编号（安全发）
-	AlipayPid             string        `json:"alipayPid"`             // 支付宝商户 ID
-	AlipayAccount         string        `json:"alipayAccount"`         // 支付宝收款账号
-	LogicGroupId          string        `json:"logicGroupId"`          // 支付宝学校、机构用户库 ID
-	WxSubMchId            string        `json:"wxSubMchId"`            // 微信商户号
-	WxSubMchAccount       string        `json:"wxSubMchAccount"`       // 微信收款账号
-	SettlementAccountType string        `json:"settlementAccountType"` // 结算类型：01(银行卡)/02(支付宝)/03(支付宝虚拟账户)
-	BankCardNo            string        `json:"bankCardNo"`            // 银行卡号
-	BankCertName          string        `json:"bankCertName"`          // 银行账户户名
-	AccountType           string        `json:"accountType"`           // 账户类型：01(对私账户)/02(对公账户)
-	ContactLine           string        `json:"contactLine"`           // 联行号
-	BranchName            string        `json:"branchName"`            // 开户支行名称
-	BranchProvince        string        `json:"branchProvince"`        // 开户支行所在省
-	BranchCity            string        `json:"branchCity"`            // 开户支行所在市
-	CertType              string        `json:"certType"`              // 持卡人证件类型：01(身份证)
-	CertNo                string        `json:"certNo"`                // 持卡人证件号码
-	CardHolderAddress     string        `json:"cardHolderAddress"`     // 持卡人地址
-	LogonId               string        `json:"logonId"`               // 支付宝登陆账号
-	UserId                string        `json:"userId"`                // 支付宝用户 ID
-	FileManifest          *FileManifest `json:"fileManifest"`          // 文件哈希清单：字段名 -> 按上传顺序排列的 SM3 哈希列表（64 位 Hex）
+	ReqTimestamp          string        `json:"reqTimestamp"`                    // 业务请求时间戳，须与外层信封 timestamp 一致（防重放）
+	ChannelNo             string        `json:"channelNo"`                       // 渠道号
+	ProductCode           []string      `json:"productCode,omitempty"`           // 已选产品编码列表（WiCoinProductCode 枚举）
+	LegalName             string        `json:"legalName,omitempty"`             // 法定名称（营业执照上的公司名称）
+	ShortName             string        `json:"shortName,omitempty"`             // 商户简称 / 常用名
+	MerchantBaseType      string        `json:"merchantBaseType,omitempty"`      // 商户类型：01(自然人)/02(个体工商户)/03(企业商户)
+	SubRoleType           string        `json:"subRoleType,omitempty"`           // 商户角色
+	DealType              string        `json:"dealType,omitempty"`              // 商户经营类型：01(实体特约)/02(网络特约)/03(实体兼网络特约)
+	Mcc                   string        `json:"mcc,omitempty"`                   // 经营类目（MCC 码）
+	ContactMobile         string        `json:"contactMobile,omitempty"`         // 联系人手机号
+	ContactName           string        `json:"contactName,omitempty"`           // 联系人姓名
+	Email                 string        `json:"email,omitempty"`                 // 联系人邮箱
+	PrincipalMobile       string        `json:"principalMobile,omitempty"`       // 负责人手机号（即法人手机号）
+	PrincipalCertType     string        `json:"principalCertType,omitempty"`     // 负责人证件类型
+	PrincipalCertNo       string        `json:"principalCertNo,omitempty"`       // 负责人证件号码
+	PrincipalPerson       string        `json:"principalPerson,omitempty"`       // 负责人名称或企业法人代表姓名
+	PrincipalCertVld      string        `json:"principalCertVld,omitempty"`      // 负责人证件有效期，格式 yyyy-MM-dd HH:mm:ss
+	MangerLogonId         string        `json:"mangerLogonId,omitempty"`         // 管理员支付宝登录号
+	Province              string        `json:"province,omitempty"`              // 省份（国标省市区号）
+	City                  string        `json:"city,omitempty"`                  // 城市（国标省市区号）
+	District              string        `json:"district,omitempty"`              // 区（国标省市区号）
+	Address               string        `json:"address,omitempty"`               // 详细地址
+	ServicePhoneNo        string        `json:"servicePhoneNo,omitempty"`        // 商户客服电话
+	TaxNum                string        `json:"taxNum,omitempty"`                // 税务登记证号码
+	BussAuthVld           string        `json:"bussAuthVld,omitempty"`           // 营业执照有效期，格式 yyyy-MM-dd HH:mm:ss
+	ShareholderName       string        `json:"shareholderName,omitempty"`       // 控股股东或实际控制人姓名
+	ShareholderCertType   string        `json:"shareholderCertType,omitempty"`   // 控股股东或实际控制人证件类型
+	ShareholderCertNo     string        `json:"shareholderCertNo,omitempty"`     // 控股股东或实际控制人证件号码
+	ShareholderCertVld    string        `json:"shareholderCertVld,omitempty"`    // 控股股东或实际控制人证件有效期，格式 yyyy-MM-dd HH:mm:ss
+	PersonSex             string        `json:"personSex,omitempty"`             // 性别（自然人商户）：M(男性)/F(女性)
+	PersonProfession      string        `json:"personProfession,omitempty"`      // 职业（自然人商户）
+	PersonCertVld         string        `json:"personCertVld,omitempty"`         // 身份证件有效期限（自然人商户），格式 yyyy-MM-dd HH:mm:ss
+	BussAuthType          string        `json:"bussAuthType,omitempty"`          // 营业执照证件类型
+	BussAuthNo            string        `json:"bussAuthNo,omitempty"`            // 证件号码（营业执照号或统一社会信用代码）
+	Remark                string        `json:"remark,omitempty"`                // 备注
+	PartnerId             string        `json:"partnerId,omitempty"`             // 渠道商 ID
+	MerchantType          string        `json:"merchantType,omitempty"`          // 商户业务类型，如 SCHOOL、GROUP_MEAL、HR 等
+	AgreementNo           string        `json:"agreementNo,omitempty"`           // 支付宝签约记录编号（安全发）
+	AlipayPid             string        `json:"alipayPid,omitempty"`             // 支付宝商户 ID
+	AlipayAccount         string        `json:"alipayAccount,omitempty"`         // 支付宝收款账号
+	LogicGroupId          string        `json:"logicGroupId,omitempty"`          // 支付宝学校、机构用户库 ID
+	WxSubMchId            string        `json:"wxSubMchId,omitempty"`            // 微信商户号
+	WxSubMchAccount       string        `json:"wxSubMchAccount,omitempty"`       // 微信收款账号
+	SettlementAccountType string        `json:"settlementAccountType,omitempty"` // 结算类型：01(银行卡)/02(支付宝)/03(支付宝虚拟账户)
+	BankCardNo            string        `json:"bankCardNo,omitempty"`            // 银行卡号
+	BankCertName          string        `json:"bankCertName,omitempty"`          // 银行账户户名
+	AccountType           string        `json:"accountType,omitempty"`           // 账户类型：01(对私账户)/02(对公账户)
+	ContactLine           string        `json:"contactLine,omitempty"`           // 联行号
+	BranchName            string        `json:"branchName,omitempty"`            // 开户支行名称
+	BranchProvince        string        `json:"branchProvince,omitempty"`        // 开户支行所在省
+	BranchCity            string        `json:"branchCity,omitempty"`            // 开户支行所在市
+	CertType              string        `json:"certType,omitempty"`              // 持卡人证件类型：01(身份证)
+	CertNo                string        `json:"certNo,omitempty"`                // 持卡人证件号码
+	CardHolderAddress     string        `json:"cardHolderAddress,omitempty"`     // 持卡人地址
+	LogonId               string        `json:"logonId,omitempty"`               // 支付宝登陆账号
+	UserId                string        `json:"userId,omitempty"`                // 支付宝用户 ID
+	FileManifest          *FileManifest `json:"fileManifest,omitempty"`          // 文件哈希清单：字段名 -> 按上传顺序排列的 SM3 哈希列表（64 位 Hex）
 }
 
 func (x *CreatePrepareDto) GetTs() string {
@@ -74,9 +74,9 @@ func (x *CreatePrepareDto) GetTs() string {
 
 // NewCreatePrepareDto 创建创建草稿并申请上传凭证请求体。
 func NewCreatePrepareDto(
-	productCode []string,
 	legalName string,
 	shortName string,
+	productCode []string,
 	merchantBaseType string,
 	subRoleType string,
 	dealType string,
@@ -84,83 +84,98 @@ func NewCreatePrepareDto(
 	contactMobile string,
 	contactName string,
 	email string,
-	principalMobile string,
-	principalCertType string,
-	principalCertNo string,
-	principalPerson string,
-	principalCertVld string,
-	province string,
-	city string,
-	district string,
-	address string,
-	servicePhoneNo string,
-	personSex string,
-	personProfession string,
-	settlementAccountType string,
-	bankCardNo string,
-	bankCertName string,
-	accountType string,
-	contactLine string,
-	branchName string,
-	branchProvince string,
-	branchCity string,
-	certType string,
-	certNo string,
-	cardHolderAddress string,
-	logonId string,
-	userId string,
-	fileManifest *FileManifest,
 ) *CreatePrepareDto {
 	return &CreatePrepareDto{
-		ProductCode:           productCode,
-		LegalName:             legalName,
-		ShortName:             shortName,
-		MerchantBaseType:      merchantBaseType,
-		SubRoleType:           subRoleType,
-		DealType:              dealType,
-		Mcc:                   mcc,
-		ContactMobile:         contactMobile,
-		ContactName:           contactName,
-		Email:                 email,
-		PrincipalMobile:       principalMobile,
-		PrincipalCertType:     principalCertType,
-		PrincipalCertNo:       principalCertNo,
-		PrincipalPerson:       principalPerson,
-		PrincipalCertVld:      principalCertVld,
-		Province:              province,
-		City:                  city,
-		District:              district,
-		Address:               address,
-		ServicePhoneNo:        servicePhoneNo,
-		PersonSex:             personSex,
-		PersonProfession:      personProfession,
-		SettlementAccountType: settlementAccountType,
-		BankCardNo:            bankCardNo,
-		BankCertName:          bankCertName,
-		AccountType:           accountType,
-		ContactLine:           contactLine,
-		BranchName:            branchName,
-		BranchProvince:        branchProvince,
-		BranchCity:            branchCity,
-		CertType:              certType,
-		CertNo:                certNo,
-		CardHolderAddress:     cardHolderAddress,
-		LogonId:               logonId,
-		UserId:                userId,
-		FileManifest:          fileManifest,
-		ReqTimestamp:          strconv.FormatInt(time.Now().UnixMilli(), 10),
+		ReqTimestamp:     strconv.FormatInt(time.Now().UnixMilli(), 10),
+		LegalName:        legalName,
+		ShortName:        shortName,
+		ProductCode:      productCode,
+		MerchantBaseType: merchantBaseType,
+		SubRoleType:      subRoleType,
+		DealType:         dealType,
+		Mcc:              mcc,
+		ContactMobile:    contactMobile,
+		ContactName:      contactName,
+		Email:            email,
 	}
+}
+
+// SetPrincipal 一次性设置负责人相关信息（手机号、证件类型、证件号码、姓名、证件有效期）。
+func (x *CreatePrepareDto) SetPrincipal(mobile, certType, certNo, person, certVld string) *CreatePrepareDto {
+	x.PrincipalMobile = mobile
+	x.PrincipalCertType = certType
+	x.PrincipalCertNo = certNo
+	x.PrincipalPerson = person
+	x.PrincipalCertVld = certVld
+	return x
+}
+
+// SetLocation 一次性设置地址信息（省/市/区/详细地址/客服电话）。
+func (x *CreatePrepareDto) SetLocation(province, city, district, address, servicePhoneNo string) *CreatePrepareDto {
+	x.Province = province
+	x.City = city
+	x.District = district
+	x.Address = address
+	x.ServicePhoneNo = servicePhoneNo
+	return x
+}
+
+// SetPerson 一次性设置自然人商户相关信息（性别、职业）。
+func (x *CreatePrepareDto) SetPerson(sex, profession string) *CreatePrepareDto {
+	x.PersonSex = sex
+	x.PersonProfession = profession
+	return x
+}
+
+// SetSettlementAccountType 设置结算类型。
+func (x *CreatePrepareDto) SetSettlementAccountType(i string) *CreatePrepareDto {
+	x.SettlementAccountType = i
+	return x
+}
+
+// SetBank 一次性设置结算账户信息
+// （bankCardNo 银行卡号、bankCertName 银行账户户名、accountType 账户类型 01对私/02对公、
+// contactLine 联行号、branchName 开户支行名称、branchProvince 开户支行所在省、branchCity 开户支行所在市）。
+func (x *CreatePrepareDto) SetBank(bankCardNo, bankCertName, accountType, contactLine, branchName, branchProvince, branchCity string) *CreatePrepareDto {
+	x.BankCardNo = bankCardNo
+	x.BankCertName = bankCertName
+	x.AccountType = accountType
+	x.ContactLine = contactLine
+	x.BranchName = branchName
+	x.BranchProvince = branchProvince
+	x.BranchCity = branchCity
+	return x
+}
+
+// SetCardHolder 一次性设置持卡人信息（certType 证件类型、certNo 证件号码、cardHolderAddress 持卡人地址）。
+func (x *CreatePrepareDto) SetCardHolder(certType, certNo, cardHolderAddress string) *CreatePrepareDto {
+	x.CertType = certType
+	x.CertNo = certNo
+	x.CardHolderAddress = cardHolderAddress
+	return x
+}
+
+// SetLogonId 设置支付宝登录账号。
+func (x *CreatePrepareDto) SetLogonId(i string) *CreatePrepareDto {
+	x.LogonId = i
+	return x
+}
+
+// SetUserId 设置支付宝用户 ID。
+func (x *CreatePrepareDto) SetUserId(i string) *CreatePrepareDto {
+	x.UserId = i
+	return x
+}
+
+// SetFileManifest 设置文件哈希清单。
+func (x *CreatePrepareDto) SetFileManifest(i *FileManifest) *CreatePrepareDto {
+	x.FileManifest = i
+	return x
 }
 
 // SetMangerLogonId 设置管理员支付宝登录号。
 func (x *CreatePrepareDto) SetMangerLogonId(i string) *CreatePrepareDto {
 	x.MangerLogonId = i
-	return x
-}
-
-// SetTaxNum 设置税务登记证号码。
-func (x *CreatePrepareDto) SetTaxNum(i string) *CreatePrepareDto {
-	x.TaxNum = i
 	return x
 }
 
@@ -170,27 +185,15 @@ func (x *CreatePrepareDto) SetBussAuthVld(i string) *CreatePrepareDto {
 	return x
 }
 
-// SetShareholderName 设置控股股东或实际控制人姓名。
-func (x *CreatePrepareDto) SetShareholderName(i string) *CreatePrepareDto {
-	x.ShareholderName = i
-	return x
-}
-
-// SetShareholderCertType 设置控股股东或实际控制人证件类型。
-func (x *CreatePrepareDto) SetShareholderCertType(i string) *CreatePrepareDto {
-	x.ShareholderCertType = i
-	return x
-}
-
-// SetShareholderCertNo 设置控股股东或实际控制人证件号码。
-func (x *CreatePrepareDto) SetShareholderCertNo(i string) *CreatePrepareDto {
-	x.ShareholderCertNo = i
-	return x
-}
-
-// SetShareholderCertVld 设置控股股东或实际控制人证件有效期，格式 yyyy-MM-dd HH:mm:ss。
-func (x *CreatePrepareDto) SetShareholderCertVld(i string) *CreatePrepareDto {
-	x.ShareholderCertVld = i
+// SetShareholder 一次性设置税务登记与控股股东信息
+// （taxNum 税务登记证号码、shareholderName 姓名、shareholderCertType 证件类型、
+// shareholderCertNo 证件号码、shareholderCertVld 证件有效期）。
+func (x *CreatePrepareDto) SetShareholder(taxNum, shareholderName, shareholderCertType, shareholderCertNo, shareholderCertVld string) *CreatePrepareDto {
+	x.TaxNum = taxNum
+	x.ShareholderName = shareholderName
+	x.ShareholderCertType = shareholderCertType
+	x.ShareholderCertNo = shareholderCertNo
+	x.ShareholderCertVld = shareholderCertVld
 	return x
 }
 
