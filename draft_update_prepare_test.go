@@ -25,46 +25,32 @@ func TestUpdatePrepare(t *testing.T) {
 
 	dto := hst.NewUpdatePrepareDto(
 		uploadFilesResult.DraftId,               // draftId（定位已有草稿）
-		[]string{"WICOIN_MYBANK_SPLIT_ACCOUNT"}, // productCode
 		cfg.PersonUsername,                      // legalName（自然人即姓名）
 		cfg.PersonUsername+"_更新",                // shortName（修改：加"_更新"后缀）
+		[]string{"WICOIN_MYBANK_SPLIT_ACCOUNT"}, // productCode
 		"01",                                    // merchantBaseType：01 自然人
 		"brand_other",                           // subRoleType：其他服务公司
 		"01",                                    // dealType：实体特约商户
 		"7299",                                  // mcc：其他生活服务
-		cfg.PersonMobile,                        // contactMobile
-		cfg.PersonUsername,                      // contactName
-		"test@example.com",                      // email
-		cfg.PersonMobile,                        // principalMobile（法人手机号）
-		"100",                                   // principalCertType：100 身份证
-		cfg.PersonCertNo,                        // principalCertNo
-		cfg.PersonUsername,                      // principalPerson
-		"2031-05-20 00:00:00",                   // principalCertVld（证件有效期）
-		"460000",                                // province：海南省
-		"460100",                                // city：海口市
-		"460105",                                // district：秀英区
-		"海南省海口市秀英区更新路XX号", // address（修改：地址变更）
-		cfg.PersonMobile,     // servicePhoneNo
-		"M",                  // personSex：M 男性
-		"自由职业",               // personProfession
-		"01",                 // settlementAccountType：01 银行卡
-		cfg.PersonBankCardNo, // bankCardNo
-		cfg.PersonUsername,   // bankCertName
-		"01",                 // accountType：01 对私账户（自然人）
-		"310100000000",       // contactLine：联行号
-		"中国农业银行海口秀英支行",       // branchName
-		"460000",             // branchProvince
-		"460100",             // branchCity
-		"01",                 // certType：01 身份证
-		cfg.PersonCertNo,     // certNo（持卡人证件号码）
-		"海南省海口市秀英区更新路XX号",       // cardHolderAddress
-		cfg.PersonMybankAccount, // logonId
-		cfg.PersonUid,           // userId
-		&hst.FileManifest{
+		cfg.PersonMobile,
+		cfg.PersonUsername,
+		"test@example.com",
+	).
+		SetPrincipal(cfg.PersonMobile, "100", cfg.PersonCertNo, cfg.PersonUsername, "2031-05-20 00:00:00").
+		SetLocation("460000", "460100", "460105", "海南省海口市秀英区更新路XX号", cfg.PersonMobile). // 修改：地址变更
+		SetPerson("M", "自由职业").
+		SetSettlementAccountType("01"). // 结算类型：01 银行卡
+		SetBank(cfg.PersonBankCardNo, cfg.PersonUsername, "01", "310100000000",
+			"中国农业银行海口秀英支行", "460000", "460100",
+		).
+		SetCardHolder("01", cfg.PersonCertNo, "海南省海口市秀英区更新路XX号").
+		SetLogonId(cfg.PersonMybankAccount). // logonId（网商二类户）
+		SetUserId(cfg.PersonUid).
+		SetFileManifest(&hst.FileManifest{
 			ShopPhotoFiles: []string{shopPhotoHash}, // 门头照（增量更新）
-		},
-	).SetAlipayAccount(cfg.PersonMybankAccount).
-		SetMerchantType("OTHER")
+		}).
+		SetAlipayAccount(cfg.PersonMybankAccount). // 支付宝收款账号（网商二类户）
+		SetMerchantType("OTHER")                   // 商户业务类型：其他
 
 	result, err := client.UpdatePrepare(ctx, dto)
 	if err != nil {
