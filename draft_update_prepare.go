@@ -188,11 +188,16 @@ func (x *UpdatePrepareDto) SetBussAuthVld(i string) *UpdatePrepareDto {
 	return x
 }
 
-// SetShareholder 一次性设置税务登记与控股股东信息
-// （taxNum 税务登记证号码、shareholderName 姓名、shareholderCertType 证件类型、
+// SetTaxNum 设置税务登记证号码。
+func (x *UpdatePrepareDto) SetTaxNum(i string) *UpdatePrepareDto {
+	x.TaxNum = i
+	return x
+}
+
+// SetShareholder 一次性设置控股股东信息
+// （shareholderName 姓名、shareholderCertType 证件类型、
 // shareholderCertNo 证件号码、shareholderCertVld 证件有效期）。
-func (x *UpdatePrepareDto) SetShareholder(taxNum, shareholderName, shareholderCertType, shareholderCertNo, shareholderCertVld string) *UpdatePrepareDto {
-	x.TaxNum = taxNum
+func (x *UpdatePrepareDto) SetShareholder(shareholderName, shareholderCertType, shareholderCertNo, shareholderCertVld string) *UpdatePrepareDto {
 	x.ShareholderName = shareholderName
 	x.ShareholderCertType = shareholderCertType
 	x.ShareholderCertNo = shareholderCertNo
