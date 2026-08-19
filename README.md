@@ -152,17 +152,34 @@ result, err := client.CreatePrepare(ctx, dto)
 
 两步上传 **Step 2**。以 `multipart/form-data` 携带凭证与文件上传，服务端按字段名 + 顺序重算 SM3 比对。
 
+文件通过 `*hst.UploadFile` 提供三种来源构造：
+
+- `hst.NewUploadFileFromPath(path)` — 本地文件路径
+- `hst.NewUploadFileFromReader(name, reader)` — 任意 `io.Reader` 流（内存、网络流等，无需落盘）
+- `hst.NewUploadFileFromFileHeader(fh)` — Hertz / Gin 等框架 `FormFile()` 返回的 `*multipart.FileHeader`，可直接流式转发用户上传的文件
+
 ```go
-dto := hst.NewUploadFilesDto(
-    "PC2025xxxx",     // channelId 渠道商 ID
-    "<upload_token>",  // uploadToken 来自 CreatePrepare/UpdatePrepare
-).SetCertPhotoAFiles("files/sfz-a.jpg").  // 身份证人像面
-  SetCertPhotoBFiles("files/sfz-b.jpg").  // 身份证国徽面
-  SetLicensePhotoFiles("files/yyzz.jpg")  // 营业执照
+dto := hst.NewUploadFilesDto("<upload_token>"). // uploadToken 来自 CreatePrepare/UpdatePrepare
+    SetCertPhotoAFiles(hst.NewUploadFileFromPath("files/sfz-a.jpg")).  // 身份证人像面
+    SetCertPhotoBFiles(hst.NewUploadFileFromPath("files/sfz-b.jpg")).  // 身份证国徽面
+    SetLicensePhotoFiles(hst.NewUploadFileFromPath("files/yyzz.jpg"))  // 营业执照
 
 bizData, err := client.UploadFiles(ctx, dto)
 // bizData.DraftId     — 草稿 ID
 // bizData.DraftStatus — 草稿状态 EDITING/SUBMITTING/CONFIRMED/FAILED
+```
+
+Hertz 接口中直接转发（不落盘）：
+
+```go
+func uploadHandler(ctx app.RequestContext, client *hst.Hst) {
+    fh, _ := ctx.FormFile("certPhotoA")
+    file, err := hst.NewUploadFileFromFileHeader(fh)
+    // ... err 处理
+    dto := hst.NewUploadFilesDto(token).SetCertPhotoAFiles(file)
+    bizData, err := client.UploadFiles(ctx, dto)
+    _ = bizData
+}
 ```
 
 > `uploadToken` 为一次性凭证，无论成功与否都会被消费。上传字段须与 Step 1 的 `FileManifest` 一致。

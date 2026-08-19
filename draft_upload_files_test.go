@@ -53,13 +53,13 @@ func TestUploadFiles(t *testing.T) {
 		}
 		switch fieldName {
 		case "certPhotoAFiles":
-			dto.SetCertPhotoAFiles(filePath)
+			dto.SetCertPhotoAFiles(hst.NewUploadFileFromPath(filePath))
 		case "certPhotoBFiles":
-			dto.SetCertPhotoBFiles(filePath)
+			dto.SetCertPhotoBFiles(hst.NewUploadFileFromPath(filePath))
 		case "licensePhotoFiles":
-			dto.SetLicensePhotoFiles(filePath)
+			dto.SetLicensePhotoFiles(hst.NewUploadFileFromPath(filePath))
 		case "shopPhotoFiles":
-			dto.SetShopPhotoFiles(filePath)
+			dto.SetShopPhotoFiles(hst.NewUploadFileFromPath(filePath))
 		}
 	}
 

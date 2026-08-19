@@ -3,33 +3,87 @@ package hst
 import (
 	"context"
 	"fmt"
-	"path/filepath"
+	"io"
+	"mime/multipart"
 
 	"github.com/bytedance/sonic"
 	"github.com/kainonly/go/help"
 	"resty.dev/v3"
 )
 
+// UploadFile 上传文件源。
+// Path 与 Reader 二选一：设置 Reader 时以流方式上传（无需落盘），否则按 Path 打开本地文件。
+// Name 为 multipart 文件名，Path 模式下留空自动取文件基名；
+// Type 为 Content-Type，留空时由 resty 自动嗅探（读取前 512 字节）。
+type UploadFile struct {
+	Path   string
+	Reader io.Reader
+	Name   string
+	Type   string
+	Size   int64 // Reader 模式下的内容大小（可选，进度回调用）
+}
+
+// NewUploadFileFromPath 从本地文件路径构造上传文件。
+func NewUploadFileFromPath(path string) *UploadFile {
+	return &UploadFile{Path: path}
+}
+
+// NewUploadFileFromReader 从 io.Reader 构造上传文件（内存流、网络流等，无需落盘）。
+// name 为 multipart 文件名（含扩展名，如 sfz-a.jpg）。
+func NewUploadFileFromReader(name string, reader io.Reader) *UploadFile {
+	return &UploadFile{Name: name, Reader: reader}
+}
+
+// NewUploadFileFromFileHeader 从 *multipart.FileHeader 构造上传文件，
+// 可直接传入 Hertz / Gin 等框架 FormFile() 的返回值实现请求文件流式转发，无需落盘。
+// 注意：FileHeader 打开的流是一次性的，构造后不可重复使用。
+func NewUploadFileFromFileHeader(fh *multipart.FileHeader) (file *UploadFile, err error) {
+	var f multipart.File
+	if f, err = fh.Open(); err != nil {
+		return
+	}
+	file = &UploadFile{
+		Name:   fh.Filename,
+		Type:   fh.Header.Get("Content-Type"),
+		Size:   fh.Size,
+		Reader: f,
+	}
+	return
+}
+
+// field 生成 resty multipart 字段。
+func (x *UploadFile) field(name string) *resty.MultipartField {
+	return &resty.MultipartField{
+		Name:        name,
+		FileName:    x.Name,
+		ContentType: x.Type,
+		Reader:      x.Reader,
+		FilePath:    x.Path,
+		FileSize:    x.Size,
+	}
+}
+
 // UploadFilesDto 上传资质文件请求体（multipart/form-data）。
-// 每个字段对应一种资质，值为按上传顺序排列的本地文件路径列表。
+// 每个字段对应一种资质，值为按上传顺序排列的上传文件列表，
+// 支持 NewUploadFileFromPath / NewUploadFileFromReader / NewUploadFileFromFileHeader 构造。
 // 仅 fileManifest 中出现且哈希数量 > 0 的字段必须按顺序上传对应数量的文件；
 // 清单中为空或未出现的字段不可上传（否则视为夹带未签名文件而拒绝）。
 type UploadFilesDto struct {
 	ChannelId                   string
 	UploadToken                 string
-	CertPhotoAFiles             []string // 身份证人像面
-	CertPhotoBFiles             []string // 身份证国徽面
-	LicensePhotoFiles           []string // 营业执照
-	PrgPhotoFiles               []string // 组织机构代码证
-	IndustryLicensePhotoFiles   []string // 开户许可证
-	ShopPhotoFiles              []string // 门头照
-	OtherPhotoFiles             []string // 其他资料
-	CertPhotoCFiles             []string // 手持身份证
-	RegisterProtocolPhotoFiles  []string // 商户入驻协议
-	ContractPhotoFiles          []string // 租赁协议
-	ShopEntrancePhotoFiles      []string // 门店内景
-	CheckstandPhotoFiles        []string // 收银台
-	MerchantAgreementPhotoFiles []string // 商户协议
+	CertPhotoAFiles             []*UploadFile // 身份证人像面
+	CertPhotoBFiles             []*UploadFile // 身份证国徽面
+	LicensePhotoFiles           []*UploadFile // 营业执照
+	PrgPhotoFiles               []*UploadFile // 组织机构代码证
+	IndustryLicensePhotoFiles   []*UploadFile // 开户许可证
+	ShopPhotoFiles              []*UploadFile // 门头照
+	OtherPhotoFiles             []*UploadFile // 其他资料
+	CertPhotoCFiles             []*UploadFile // 手持身份证
+	RegisterProtocolPhotoFiles  []*UploadFile // 商户入驻协议
+	ContractPhotoFiles          []*UploadFile // 租赁协议
+	ShopEntrancePhotoFiles      []*UploadFile // 门店内景
+	CheckstandPhotoFiles        []*UploadFile // 收银台
+	MerchantAgreementPhotoFiles []*UploadFile // 商户协议
 }
 
 // NewUploadFilesDto 创建上传资质文件请求体。
@@ -37,80 +91,80 @@ func NewUploadFilesDto(uploadToken string) *UploadFilesDto {
 	return &UploadFilesDto{UploadToken: uploadToken}
 }
 
-// SetCertPhotoAFiles 设置身份证人像面文件路径列表。
-func (x *UploadFilesDto) SetCertPhotoAFiles(i ...string) *UploadFilesDto {
+// SetCertPhotoAFiles 设置身份证人像面文件列表。
+func (x *UploadFilesDto) SetCertPhotoAFiles(i ...*UploadFile) *UploadFilesDto {
 	x.CertPhotoAFiles = i
 	return x
 }
 
-// SetCertPhotoBFiles 设置身份证国徽面文件路径列表。
-func (x *UploadFilesDto) SetCertPhotoBFiles(i ...string) *UploadFilesDto {
+// SetCertPhotoBFiles 设置身份证国徽面文件列表。
+func (x *UploadFilesDto) SetCertPhotoBFiles(i ...*UploadFile) *UploadFilesDto {
 	x.CertPhotoBFiles = i
 	return x
 }
 
-// SetLicensePhotoFiles 设置营业执照文件路径列表。
-func (x *UploadFilesDto) SetLicensePhotoFiles(i ...string) *UploadFilesDto {
+// SetLicensePhotoFiles 设置营业执照文件列表。
+func (x *UploadFilesDto) SetLicensePhotoFiles(i ...*UploadFile) *UploadFilesDto {
 	x.LicensePhotoFiles = i
 	return x
 }
 
-// SetPrgPhotoFiles 设置组织机构代码证文件路径列表。
-func (x *UploadFilesDto) SetPrgPhotoFiles(i ...string) *UploadFilesDto {
+// SetPrgPhotoFiles 设置组织机构代码证文件列表。
+func (x *UploadFilesDto) SetPrgPhotoFiles(i ...*UploadFile) *UploadFilesDto {
 	x.PrgPhotoFiles = i
 	return x
 }
 
-// SetIndustryLicensePhotoFiles 设置开户许可证文件路径列表。
-func (x *UploadFilesDto) SetIndustryLicensePhotoFiles(i ...string) *UploadFilesDto {
+// SetIndustryLicensePhotoFiles 设置开户许可证文件列表。
+func (x *UploadFilesDto) SetIndustryLicensePhotoFiles(i ...*UploadFile) *UploadFilesDto {
 	x.IndustryLicensePhotoFiles = i
 	return x
 }
 
-// SetShopPhotoFiles 设置门头照文件路径列表。
-func (x *UploadFilesDto) SetShopPhotoFiles(i ...string) *UploadFilesDto {
+// SetShopPhotoFiles 设置门头照文件列表。
+func (x *UploadFilesDto) SetShopPhotoFiles(i ...*UploadFile) *UploadFilesDto {
 	x.ShopPhotoFiles = i
 	return x
 }
 
-// SetOtherPhotoFiles 设置其他资料文件路径列表。
-func (x *UploadFilesDto) SetOtherPhotoFiles(i ...string) *UploadFilesDto {
+// SetOtherPhotoFiles 设置其他资料文件列表。
+func (x *UploadFilesDto) SetOtherPhotoFiles(i ...*UploadFile) *UploadFilesDto {
 	x.OtherPhotoFiles = i
 	return x
 }
 
-// SetCertPhotoCFiles 设置手持身份证文件路径列表。
-func (x *UploadFilesDto) SetCertPhotoCFiles(i ...string) *UploadFilesDto {
+// SetCertPhotoCFiles 设置手持身份证文件列表。
+func (x *UploadFilesDto) SetCertPhotoCFiles(i ...*UploadFile) *UploadFilesDto {
 	x.CertPhotoCFiles = i
 	return x
 }
 
-// SetRegisterProtocolPhotoFiles 设置商户入驻协议文件路径列表。
-func (x *UploadFilesDto) SetRegisterProtocolPhotoFiles(i ...string) *UploadFilesDto {
+// SetRegisterProtocolPhotoFiles 设置商户入驻协议文件列表。
+func (x *UploadFilesDto) SetRegisterProtocolPhotoFiles(i ...*UploadFile) *UploadFilesDto {
 	x.RegisterProtocolPhotoFiles = i
 	return x
 }
 
-// SetContractPhotoFiles 设置租赁协议文件路径列表。
-func (x *UploadFilesDto) SetContractPhotoFiles(i ...string) *UploadFilesDto {
+// SetContractPhotoFiles 设置租赁协议文件列表。
+func (x *UploadFilesDto) SetContractPhotoFiles(i ...*UploadFile) *UploadFilesDto {
 	x.ContractPhotoFiles = i
 	return x
 }
 
-// SetShopEntrancePhotoFiles 设置门店内景文件路径列表。
-func (x *UploadFilesDto) SetShopEntrancePhotoFiles(i ...string) *UploadFilesDto {
+// SetShopEntrancePhotoFiles 设置门店内景文件列表。
+func (x *UploadFilesDto) SetShopEntrancePhotoFiles(i ...*UploadFile) *UploadFilesDto {
 	x.ShopEntrancePhotoFiles = i
 	return x
 }
 
-// SetCheckstandPhotoFiles 设置收银台文件路径列表。
-func (x *UploadFilesDto) SetCheckstandPhotoFiles(i ...string) *UploadFilesDto {
+// SetCheckstandPhotoFiles 设置收银台文件列表。
+func (x *UploadFilesDto) SetCheckstandPhotoFiles(i ...*UploadFile) *UploadFilesDto {
 	x.CheckstandPhotoFiles = i
 	return x
 }
 
-// SetMerchantAgreementPhotoFiles 设置商户协议文件路径列表。
-func (x *UploadFilesDto) SetMerchantAgreementPhotoFiles(i ...string) *UploadFilesDto {
+// SetMerchantAgreementPhotoFiles 设置商户协议文件列表。
+func (x *UploadFilesDto) SetMerchantAgreementPhotoFiles(i ...*UploadFile) *UploadFilesDto {
 	x.MerchantAgreementPhotoFiles = i
 	return x
 }
@@ -122,7 +176,7 @@ func (x *UploadFilesDto) multipartFields() []*resty.MultipartField {
 	var fields []*resty.MultipartField
 	fileGroups := []struct {
 		name  string
-		paths []string
+		files []*UploadFile
 	}{
 		{"certPhotoAFiles", x.CertPhotoAFiles},
 		{"certPhotoBFiles", x.CertPhotoBFiles},
@@ -139,12 +193,11 @@ func (x *UploadFilesDto) multipartFields() []*resty.MultipartField {
 		{"merchantAgreementPhotoFiles", x.MerchantAgreementPhotoFiles},
 	}
 	for _, g := range fileGroups {
-		for _, p := range g.paths {
-			fields = append(fields, &resty.MultipartField{
-				Name:     g.name,
-				FileName: filepath.Base(p),
-				FilePath: p,
-			})
+		for _, f := range g.files {
+			if f == nil {
+				continue
+			}
+			fields = append(fields, f.field(g.name))
 		}
 	}
 	return fields
