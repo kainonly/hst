@@ -2,6 +2,10 @@
 
 WiCoin 渠道商 Go SDK，封装了进件、分账、余额查询、提现等全部渠道接口，内置 SM2 签名 + SM4 加密的标准安全流程。
 
+> **AI 阅读指引**：本文档按「机制 → 流程 → API 参考 → 数据类型」组织。
+> 理解本 SDK 需先读「核心机制」与「标识符生命周期」两节；调用任何接口前须核对「业务流程」中的顺序约束与「API 参考」中的函数签名（文档中所有代码示例的参数顺序均与真实签名一致）。
+> 所有接口分两类：**加密信封类**（JSON 请求，SM2 签名 + SM4 加密，见核心机制）与 **multipart 类**（`UploadFiles` / `TradeImport`，普通 HTTP 上传，无信封）。
+
 ## 特性
 
 - **国密安全**：内置 SM2 签名/验签、SM4-CBC 加密/解密、SM3 文件哈希
@@ -42,14 +46,22 @@ func main() {
 
     // 进件：创建草稿并申请上传凭证
     result, err := client.CreatePrepare(context.Background(), hst.NewCreatePrepareDto(
-        []string{"WICOIN_PAY"},
-        "上海某某科技有限公司",
-        "某某科技",
-        // ... 其余必填参数
-        &hst.FileManifest{
-            CertPhotoAFiles: []string{"<sm3_hash>"},
-        },
-    ).SetMerchantType("OTHER"))
+        "上海某某科技有限公司",  // legalName 法定名称
+        "某某科技",             // shortName 商户简称
+        []string{"WICOIN_PAY"}, // productCode 产品编码列表
+        "03",                   // merchantBaseType 01自然人/02个体/03企业
+        "brand_other",          // subRoleType 商户角色
+        "01",                   // dealType 经营类型 01实体/02网络/03兼有
+        "7299",                 // mcc 经营类目
+        "13800000000",          // contactMobile 联系人手机号
+        "张三",                  // contactName 联系人姓名
+        "zhangsan@example.com", // email 邮箱
+    ).SetPrincipal( // 可选组：负责人信息
+        "13800000001", "100", "310***********1234", "李四", "2035-01-01 00:00:00",
+    ).SetFileManifest(&hst.FileManifest{ // 文件哈希清单（两步上传 Step 1）
+        CertPhotoAFiles:   []string{"<sm3_hash>"}, // 身份证人像面
+        LicensePhotoFiles: []string{"<sm3_hash>"}, // 营业执照
+    }))
     if err != nil {
         panic(err)
     }
@@ -81,6 +93,96 @@ client, err := hst.NewHst(&hst.Option{
 
 > SDK 内部会自动填充 `ReqTimestamp`、`PartnerId`、`MerchantId`、`ChannelNo` 等信封字段，无需手动设置。
 
+## 核心机制
+
+### 加密信封（除 multipart 外的全部接口）
+
+SDK 与网关之间的 JSON 请求/响应均包裹在加密信封中，流程固定：
+
+```
+请求（SDK → 网关）：
+  业务 DTO ──sonic.Marshal──> 明文 JSON body
+    ├─ SM2 私钥签名（userId = ChannelId）        → signature（Base64）
+    └─ SM4-CBC 加密（key=EncryptKey，随机 IV）    → body（Base64）
+  组装 SignObjectReq {timestamp, reqTxn, ivHex, channelId, version:"1.0", signature, body}
+  POST <BaseURL><path>（application/json）
+
+响应（网关 → SDK）：
+  SignObjectResp {code, msg, timestamp, clientReqTxn, serverAppId, ivHex, signature, body}
+    ├─ code != "SUCCESS"            → 网关层错误（HTTP 非 200 同理）
+    ├─ SM4-CBC 解密 body（iv=ivHex）→ 业务明文 JSON
+    ├─ SM2 公钥验签（userId = serverAppId）→ 失败即错误
+    └─ 解析为 SignObjectRespResult[T] {bizSuccess, bizCode, bizMsg, bizData}
+         └─ bizSuccess == false     → 业务层错误
+```
+
+- 信封对调用方完全透明：业务方法返回的已是解密验签后的 `SignObjectRespResult[T]` 或 `BizData`
+- 如需原始信封（审计），见「获取网关响应信封」
+- `(*Hst).NewSignObjectReq`（组信封）与 `(*Hst).Request`（发请求 + 解密验签）为公开方法，仅特殊场景直接使用
+
+### multipart 上传（`UploadFiles` / `TradeImport`）
+
+不走加密信封。`multipart/form-data` 直接携带 `channelId`、`uploadToken` 与文件流；
+服务端按 Step 1 声明的 SM3 哈希逐字段 + 按顺序重算比对，不一致即拒绝。
+
+### 两步上传模式
+
+进件与分账的文件传输均为两步：
+
+1. **Step 1（加密信封）**：提交业务字段 + 文件 SM3 哈希清单（进件为 `FileManifest`，分账为 `fileName + fileSM3Hash`），换取一次性 `uploadToken`
+2. **Step 2（multipart）**：携带 `uploadToken` 上传真实文件，服务端重算 SM3 与 Step 1 比对
+
+`uploadToken` 一次性消费（无论成败），失败须从 Step 1 重新开始。
+
+## 标识符生命周期
+
+| 标识符 | 产生位置 | 消费/使用位置 | 说明 |
+|---|---|---|---|
+| `channelId` / `partnerId` / `channelNo` | 初始化配置 `Option.ChannelId` | SDK 自动填充到请求 | 渠道商身份，三者同义 |
+| `uploadToken` | `CreatePrepare` / `UpdatePrepare` / `GetUploadToken` 响应 | `UploadFiles` / `TradeImport` | 一次性，进件 900s / 分账 300s 有效 |
+| `draftId` | `UploadFiles` 响应 `BizData.DraftId` | `UpdatePrepare` / `Confirm` / `SettlementStatus` | 草稿唯一 ID，确认前有效 |
+| `merchantId` / `orgId` / `accountId` | `Confirm` 响应（确认成功后回填） | 渠道侧留存 | 商户/企业/结算账户标识 |
+| `merchantNo` | 进件成功后平台分配（渠道侧自备） | 余额查询、提现接口入参 | 商户号 |
+| `busId` | `TradeImport` 返回 | `TradeConfirm` / `TradeStatus` / `TradeCancel` | 分账批次主记录 ID |
+| `outWithdrawNo` | 调用方自行生成 | `Apply` / `TradeQuery` | 提现幂等键，超时重查不可换单号 |
+| `withdrawNo` | `Apply` 响应 | 渠道侧留存 | 平台提现单号 |
+
+## 业务流程
+
+### 进件（商户入驻）
+
+```
+CreatePrepare ──> UploadFiles ──> [EDITING] ──> Confirm ──> SettlementStatus（轮询）
+ (Step1 业务字段   (Step2 上传                      (确认提交,  (0审核中/1成功/2失败/
+  + FileManifest)   资质文件)                        回填       3待激活/4激活中)
+                                                      merchantId)
+失败路径：SettlementStatus=2（FAILED）或草稿仍是 EDITING/FAILED 时
+        └─> UpdatePrepare（业务字段整体重报，fileManifest 仅含新文件）
+              ──> UploadFiles ──> Confirm ──> 轮询（循环直至成功）
+```
+
+顺序约束：`CreatePrepare` → `UploadFiles` 严格两步；`Confirm` 前须完成 `UploadFiles`；
+仅 `EDITING` / `FAILED` 状态可 `UpdatePrepare`。
+
+### 分账（文档交易订单导入）
+
+```
+GetUploadToken ──> TradeImport ──> TradeConfirm ──> TradeStatus（轮询）
+ (Step1 fileName    (Step2 上传      (确认导入,       DocStatus:
+  + fileSM3Hash)     XLSX → busId)    触发补单分账)   IMPORTING/PENDING/SUCCESS/FAILED)
+
+取消路径：TradeCancel（仅取消尚未 Confirm 的批次）
+```
+
+### 提现
+
+```
+Apply（outWithdrawNo 幂等键 + totalAmount）──> TradeQuery（轮询）
+                                              status: DEALING/WAIT_CONFIRM/SUCCESS/FAIL/UNKNOWN
+危险规则：Apply 超时/中断时资金可能已出账，必须用原 outWithdrawNo 调 TradeQuery 查明结果，
+        换单号重发等于再提现一笔；UNKNOWN 须联系平台，不能自行判为失败。
+```
+
 ## 进件接口
 
 商户入驻相关接口，采用两步上传流程（先提交业务字段 + 文件哈希清单换取凭证，再上传实际文件）。
@@ -97,56 +199,64 @@ client, err := hst.NewHst(&hst.Option{
 
 两步上传 **Step 1**。提交商户入驻业务字段与资质文件 SM3 哈希清单，换取一次性上传凭证。
 
+构造函数仅含 10 个必填参数，其余字段全部通过链式 `Set` 方法设置：
+
 ```go
 dto := hst.NewCreatePrepareDto(
-    []string{"WICOIN_PAY"},           // productCode 产品编码列表
-    "上海某某科技有限公司",               // legalName 法定名称
-    "某某科技",                        // shortName 商户简称
-    "03",                             // merchantBaseType 01自然人/02个体/03企业
-    "brand_other",                    // subRoleType 商户角色
-    "01",                             // dealType 经营类型
-    "7299",                           // mcc 经营类目
-    "13800000000",                    // contactMobile 联系人手机号
-    "张三",                            // contactName 联系人姓名
-    "zhangsan@example.com",           // email 邮箱
-    "13800000001",                    // principalMobile 负责人手机号
-    "100",                            // principalCertType 100身份证
-    "310***********1234",             // principalCertNo 负责人证件号
-    "李四",                            // principalPerson 负责人姓名
-    "2035-01-01 00:00:00",            // principalCertVld 证件有效期
-    "310000",                         // province 省
-    "310100",                         // city 市
-    "310104",                         // district 区
-    "上海市徐汇区XX路XX号",              // address 详细地址
-    "021-00000000",                   // servicePhoneNo 客服电话
-    "M",                              // personSex 性别 M/F
-    "企业法人",                         // personProfession 职业
-    "01",                             // settlementAccountType 01银行卡
-    "62220000000000000",              // bankCardNo 银行卡号
-    "上海某某科技有限公司",               // bankCertName 银行账户户名
-    "02",                             // accountType 01对私/02对公
-    "310100000000",                   // contactLine 联行号
-    "某银行上海徐汇支行",                 // branchName 开户支行
-    "310000",                         // branchProvince 开户省
-    "310100",                         // branchCity 开户市
-    "01",                             // certType 01身份证
-    "310***********1234",              // certNo 持卡人证件号
-    "上海市徐汇区XX路XX号",              // cardHolderAddress 持卡人地址
-    "zhangsan@example.com",           // logonId 支付宝登录号
-    "2088***********",                // userId 支付宝用户ID
-    &hst.FileManifest{
-        CertPhotoAFiles:   []string{"<sm3_hash>"},  // 身份证人像面
-        CertPhotoBFiles:   []string{"<sm3_hash>"},  // 身份证国徽面
-        LicensePhotoFiles: []string{"<sm3_hash>"},  // 营业执照
-    },
-).SetMerchantType("OTHER")             // 可选：商户业务类型
-  .SetAlipayAccount("2088xxx")          // 可选：支付宝收款账号
-  .SetRemark("备注")                    // 可选：备注
+    "上海某某科技有限公司",  // legalName 法定名称
+    "某某科技",             // shortName 商户简称
+    []string{"WICOIN_PAY"}, // productCode 产品编码列表
+    "03",                   // merchantBaseType 01自然人/02个体/03企业
+    "brand_other",          // subRoleType 商户角色
+    "01",                   // dealType 经营类型 01实体/02网络/03兼有
+    "7299",                 // mcc 经营类目
+    "13800000000",          // contactMobile 联系人手机号
+    "张三",                  // contactName 联系人姓名
+    "zhangsan@example.com", // email 邮箱
+).SetPrincipal( // 负责人信息
+    "13800000001",           // mobile
+    "100",                   // certType 100身份证
+    "310***********1234",    // certNo
+    "李四",                   // person
+    "2035-01-01 00:00:00",   // certVld
+).SetLocation( // 地址信息
+    "310000",                // province
+    "310100",                // city
+    "310104",                // district
+    "上海市徐汇区XX路XX号",     // address
+    "021-00000000",          // servicePhoneNo
+).SetPerson("M", "企业法人"). // 自然人商户：性别、职业
+    SetSettlementAccountType("01"). // 结算类型 01银行卡/02支付宝/03支付宝虚拟账户
+    SetBank( // 结算账户
+        "62220000000000000",     // bankCardNo
+        "上海某某科技有限公司",     // bankCertName
+        "02",                    // accountType 01对私/02对公
+        "310100000000",          // contactLine
+        "某银行上海徐汇支行",       // branchName
+        "310000", "310100",      // branchProvince / branchCity
+    ).SetCardHolder( // 持卡人
+        "01",                    // certType 01身份证
+        "310***********1234",    // certNo
+        "上海市徐汇区XX路XX号",    // cardHolderAddress
+    ).SetFileManifest(&hst.FileManifest{ // 文件哈希清单
+        CertPhotoAFiles:   []string{"<sm3_hash>"}, // 身份证人像面
+        CertPhotoBFiles:   []string{"<sm3_hash>"}, // 身份证国徽面
+        LicensePhotoFiles: []string{"<sm3_hash>"}, // 营业执照
+    }).SetMerchantType("OTHER").  // 可选：商户业务类型
+    SetTaxNum("31000000000000").  // 可选：税务登记证号码
+    SetShareholder( // 可选：控股股东
+        "王五", "100", "310***********1234", "2035-01-01 00:00:00",
+    ).SetRemark("备注") // 可选：备注
 
 result, err := client.CreatePrepare(ctx, dto)
 // result.BizData.UploadToken   — 上传凭证（UUID）
 // result.BizData.ExpireSeconds — 凭证有效期（秒，固定 900）
 ```
+
+其余可选链式方法：`SetMangerLogonId`（管理员支付宝登录号）、`SetBussAuthVld`（执照有效期）、
+`SetBussAuthType` / `SetBussAuthNo`（执照证件类型/号码）、`SetPersonCertVld`（自然人证件期限）、
+`SetPartnerId`、`SetAgreementNo`、`SetAlipayPid`、`SetAlipayAccount`、`SetLogicGroupId`、
+`SetWxSubMchId`、`SetWxSubMchAccount`、`SetLogonId`、`SetUserId`。
 
 ### 上传资质文件
 
@@ -190,13 +300,15 @@ func uploadHandler(ctx app.RequestContext, client *hst.Hst) {
 
 ```go
 dto := hst.NewUpdatePrepareDto(
-    "<draft_id>",      // draftId 草稿 ID
-    []string{"WICOIN_PAY"},
-    // ... 其余必填字段与 CreatePrepare 相同
-    &hst.FileManifest{
-        ShopPhotoFiles: []string{"<sm3_hash>"},  // 仅更新门头照
-    },
-).SetMerchantType("OTHER")
+    "<draft_id>",       // draftId 草稿 ID
+    "上海某某科技有限公司", // legalName
+    "某某科技",          // shortName
+    []string{"WICOIN_PAY"}, // productCode
+    // ... 其余 7 个必填参数与 CreatePrepare 相同（merchantBaseType 至 email）
+    // 链式 Set 方法与 CreatePrepare 完全一致
+).SetFileManifest(&hst.FileManifest{
+    ShopPhotoFiles: []string{"<sm3_hash>"},  // 仅更新门头照
+}).SetMerchantType("OTHER")
 
 result, err := client.UpdatePrepare(ctx, dto)
 // result.BizData.UploadToken — 新的上传凭证
@@ -255,8 +367,8 @@ fileBytes, _ := os.ReadFile("trade.xlsx")
 fileSM3Hash := hex.EncodeToString(sm3.Sm3Sum(fileBytes))
 
 dto := hst.NewGetUploadTokenDto(
-    "trade.xlsx",      // fileName 文件名
-    fileSM3Hash,       // fileSM3Hash 64位十六进制
+    "trade.xlsx", // fileName 文件名（须与 Step 2 上传的文件名一致）
+    fileSM3Hash,  // fileSM3Hash 64位十六进制
 )
 result, err := client.GetUploadToken(ctx, dto)
 // result.BizData.UploadToken   — 上传凭证
@@ -269,13 +381,14 @@ result, err := client.GetUploadToken(ctx, dto)
 
 ```go
 dto := hst.NewTradeImportDto(
-    "PC2025xxxx",      // channelId
-    "<upload_token>",  // uploadToken
-    "files/trade.xlsx", // filePath XLSX 文件路径
+    "<upload_token>",   // uploadToken 来自 GetUploadToken
+    "files/trade.xlsx", // filePath XLSX 文件本地路径
 )
 busId, err := client.TradeImport(ctx, dto)
 // busId — 业务主记录唯一 ID，用于后续确认/查询/取消
 ```
+
+> `channelId` 由 SDK 自动填充，无需传入。multipart 字段名固定为 `file`，文件名取自路径基名。
 
 > `uploadToken` 一次性消费，上传失败需从 Step 1 重新申请。
 
@@ -409,6 +522,93 @@ if err != nil {
     return
 }
 ```
+
+## API 参考
+
+所有业务方法的接收者均为 `*Hst`，第一个参数均为 `ctx context.Context`。
+加密信封类方法统一返回 `(result *SignObjectRespResult[T], err error)`；
+multipart 类方法返回业务数据本身（无信封包装）。
+
+### 方法签名（14 个）
+
+```go
+// 进件（加密信封，除 UploadFiles）
+func (x *Hst) CreatePrepare(ctx context.Context, dto *CreatePrepareDto) (*SignObjectRespResult[*CreatePrepareBizData], error)
+func (x *Hst) UpdatePrepare(ctx context.Context, dto *UpdatePrepareDto) (*SignObjectRespResult[*UpdatePrepareBizData], error)
+func (x *Hst) UploadFiles(ctx context.Context, dto *UploadFilesDto) (*UploadFilesBizData, error) // multipart
+func (x *Hst) Confirm(ctx context.Context, dto *ConfirmDto) (*SignObjectRespResult[*ConfirmBizData], error)
+func (x *Hst) SettlementStatus(ctx context.Context, dto *SettlementStatusDto) (*SignObjectRespResult[*SettlementStatusBizData], error)
+
+// 分账
+func (x *Hst) GetUploadToken(ctx context.Context, dto *GetUploadTokenDto) (*SignObjectRespResult[*GetUploadTokenBizData], error)
+func (x *Hst) TradeImport(ctx context.Context, dto *TradeImportDto) (busId string, err error) // multipart
+func (x *Hst) TradeConfirm(ctx context.Context, dto *TradeConfirmDto) (*SignObjectRespResult[bool], error)
+func (x *Hst) TradeStatus(ctx context.Context, dto *TradeStatusDto) (*SignObjectRespResult[*TradeStatusBizData], error)
+func (x *Hst) TradeCancel(ctx context.Context, dto *TradeCancelDto) (*SignObjectRespResult[bool], error)
+
+// 余额查询
+func (x *Hst) AvailableBalance(ctx context.Context, dto *AvailableBalanceDto) (*SignObjectRespResult[*AvailableBalanceBizData], error)
+func (x *Hst) BrandBalance(ctx context.Context, dto *BrandBalanceDto) (*SignObjectRespResult[string], error)
+
+// 提现
+func (x *Hst) Apply(ctx context.Context, dto *ApplyDto) (*SignObjectRespResult[*ApplyBizData], error)
+func (x *Hst) TradeQuery(ctx context.Context, dto *TradeQueryDto) (*SignObjectRespResult[*TradeQueryBizData], error)
+
+// 特殊用途
+func NewHst(option *Option) (*Hst, error)
+func (x *Hst) NewSignObjectReq(body Body) (*SignObjectReq, error) // 组装加密信封（特殊场景）
+func (x *Hst) Request(ctx context.Context, path string, signObjectReq *SignObjectReq) (string, error) // 发送信封请求，返回解密明文
+func WithSignObjectResp(ctx context.Context) context.Context      // ctx 挂载信封收集器
+func SignObjectRespFromContext(ctx context.Context) *SignObjectResp // 读取最近一次信封
+```
+
+### DTO 构造函数签名
+
+```go
+// 进件
+func NewCreatePrepareDto(legalName, shortName string, productCode []string, merchantBaseType, subRoleType, dealType, mcc, contactMobile, contactName, email string) *CreatePrepareDto
+func NewUpdatePrepareDto(draftId, legalName, shortName string, productCode []string, merchantBaseType, subRoleType, dealType, mcc, contactMobile, contactName, email string) *UpdatePrepareDto
+func NewUploadFilesDto(uploadToken string) *UploadFilesDto
+func NewConfirmDto(draftId string) *ConfirmDto
+func NewSettlementStatusDto(draftId string) *SettlementStatusDto
+
+// 分账
+func NewGetUploadTokenDto(fileName, fileSM3Hash string) *GetUploadTokenDto
+func NewTradeImportDto(uploadToken, filePath string) *TradeImportDto
+func NewTradeConfirmDto(busId string) *TradeConfirmDto
+func NewTradeStatusDto(busId string) *TradeStatusDto
+func NewTradeCancelDto(busId string) *TradeCancelDto
+
+// 余额查询
+func NewAvailableBalanceDto(merchantNo string) *AvailableBalanceDto
+func NewBrandBalanceDto(merchantNo string) *BrandBalanceDto
+
+// 提现
+func NewApplyDto(merchantNo, outWithdrawNo, totalAmount string) *ApplyDto
+func NewTradeQueryDto(merchantNo, outWithdrawNo string) *TradeQueryDto
+
+// 上传文件源（仅 UploadFiles 使用）
+func NewUploadFileFromPath(path string) *UploadFile                          // 本地路径
+func NewUploadFileFromReader(name string, reader io.Reader) *UploadFile      // 任意流
+func NewUploadFileFromFileHeader(fh *multipart.FileHeader) (*UploadFile, error) // Hertz/Gin FormFile
+```
+
+### 响应 BizData 关键字段
+
+| 方法 | BizData 类型 | 关键字段 |
+|---|---|---|
+| `CreatePrepare` / `UpdatePrepare` | `*CreatePrepareBizData` | `UploadToken`、`ExpireSeconds` |
+| `UploadFiles` | `*UploadFilesBizData` | `DraftId`、`DraftStatus`（EDITING/SUBMITTING/CONFIRMED/FAILED）及草稿全量字段 |
+| `Confirm` | `*ConfirmBizData` | `DraftStatus`、`MerchantId`、`OrgId`、`AccountId` |
+| `SettlementStatus` | `*SettlementStatusBizData` | `SettlementStatus`（0-4）、`MerchantCreated`、`ActivateUrl` |
+| `GetUploadToken` | `*GetUploadTokenBizData` | `UploadToken`、`ExpireSeconds` |
+| `TradeImport` | `string`（busId） | — |
+| `TradeConfirm` / `TradeCancel` | `bool` | — |
+| `TradeStatus` | `*TradeStatusBizData` | `DocStatus`、`TotalDetailCount`、`SuccessCount`、`FailCount`、金额字段 |
+| `AvailableBalance` | `*AvailableBalanceBizData` | `BalanceInfos`（按 `accountType` 取：AVAILABLE_BALANCE 可提现 / PENDING_BALANCE 待结算） |
+| `BrandBalance` | `string` | 品牌专户余额（元，平台备付金，非商户额度） |
+| `Apply` | `*ApplyBizData` | `WithdrawNo`、`Status`、`ErrorDesc`（幂等命中时另有金额/时间快照） |
+| `TradeQuery` | `*TradeQueryBizData` | 订单完整快照（`Status`、`WithdrawFinishDate`、`ErrorDesc`） |
 
 ## 获取网关响应信封
 
