@@ -558,9 +558,8 @@ func (x *Hst) TradeQuery(ctx context.Context, dto *TradeQueryDto) (*SignObjectRe
 func NewHst(option *Option) (*Hst, error)
 func (x *Hst) NewSignObjectReq(body Body) (*SignObjectReq, error) // 组装加密信封（特殊场景）
 func (x *Hst) Request(ctx context.Context, path string, signObjectReq *SignObjectReq) (string, error) // 发送信封请求，返回解密明文
-func WithSignObjectResp(ctx context.Context) context.Context      // ctx 挂载信封收集器
-func SignObjectRespFromContext(ctx context.Context) *SignObjectResp // 读取最近一次信封（ctx 级）
-func (x *Hst) LastSignObjectResp() *SignObjectResp // 读取最近一次信封（客户端级，永远可用）
+func WithSignObjectResp(ctx context.Context) context.Context        // ctx 挂载信封容器
+func SignObjectRespFromContext(ctx context.Context) *SignObjectResp // 读取最近一次信封
 ```
 
 ### DTO 构造函数签名
@@ -613,22 +612,7 @@ func NewUploadFileFromFileHeader(fh *multipart.FileHeader) (*UploadFile, error) 
 
 ## 获取网关响应信封
 
-加密信封类接口（进件、分账、余额、提现）如需记录 `clientReqTxn`、`timestamp`、`signature` 等信封字段（审计/对账），有两种方式。
-
-**方式一（推荐）：客户端级读取，永远可用，零前置操作**
-
-```go
-result, err := client.CreatePrepare(ctx, dto)
-
-if resp := client.LastSignObjectResp(); resp != nil {
-    log.Printf("txn=%s timestamp=%s", resp.ClientReqTxn, resp.Timestamp)
-    // resp.Body 已是解密后的业务明文 JSON
-}
-```
-
-每次加密信封请求完成后无条件更新（含失败请求）；并发请求下返回最后完成的那次。
-
-**方式二：ctx 级收集器，按调用点隔离（并发场景精确到每次调用）**
+加密信封类接口（进件、分账、余额、提现）如需记录 `clientReqTxn`、`timestamp`、`signature` 等信封字段（审计/对账），调用前用 `WithSignObjectResp` 包装 ctx，调用后用 `SignObjectRespFromContext` 读取：
 
 ```go
 ctx = hst.WithSignObjectResp(ctx)
@@ -637,11 +621,16 @@ result, err := client.CreatePrepare(ctx, dto)
 
 if resp := hst.SignObjectRespFromContext(ctx); resp != nil {
     log.Printf("txn=%s timestamp=%s", resp.ClientReqTxn, resp.Timestamp)
+    // resp.Body 已是解密后的业务明文 JSON
 }
 ```
 
-> 同一 ctx 连续发起多次请求时，收集器保存的是最近一次的信封；需要逐次记录时，每次调用前重新 `WithSignObjectResp`。
-> `UploadFiles` / `TradeImport` 为 multipart 普通响应，不产生加密信封（方式一读到的是此前最近一次信封请求的结果）。
+要点：
+
+- 信封在每次请求后写入（含失败请求：`bizSuccess=false`、网关层错误、验签失败）；仅网络错误/响应无法解析时为 nil（此时确实无信封）
+- 同一 ctx 连续多次请求保留最近一次；需要逐次记录时，每次调用前重新 `WithSignObjectResp`
+- 不要把同一挂载 ctx 共享给多个 goroutine 并发请求；并发场景各 goroutine 各自挂载
+- `UploadFiles` / `TradeImport` 为 multipart 普通响应，不产生加密信封
 
 ## 数据类型
 

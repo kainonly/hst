@@ -9,7 +9,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"sync/atomic"
 
 	"github.com/bytedance/sonic"
 	"github.com/kainonly/go/help"
@@ -43,10 +42,6 @@ type M map[string]any
 type Hst struct {
 	Option *Option
 	Client *resty.Client
-
-	// lastSignObjectResp 最近一次加密信封响应快照，
-	// 由 Request 每次信封请求后无条件原子写入，LastSignObjectResp 读取。
-	lastSignObjectResp atomic.Pointer[SignObjectResp]
 }
 
 type Option struct {
@@ -129,43 +124,40 @@ type SignObjectResp struct {
 	Body         string `json:"body"`         // SM4 加密后的业务 JSON（Base64）
 }
 
-// signObjectRespKey ctx 中挂载网关响应信封收集器的 key。
+// signObjectRespHolder 挂载在 ctx 上的信封容器。
+// ctx 本身不可变，SDK 通过写 holder.resp 字段实现"ctx 直接设置 resp"。
+type signObjectRespHolder struct {
+	resp *SignObjectResp
+}
+
+// signObjectRespKey ctx 中挂载信封容器的 key。
 type signObjectRespKey struct{}
 
-// WithSignObjectResp 在 ctx 上挂载网关响应信封收集器，
-// 随后用同一 ctx 发起的加密信封请求（Request）会把最近一次
-// SignObjectResp 原子写入收集器（含失败请求），供事后审计/日志使用。
+// WithSignObjectResp 在 ctx 上挂载信封容器。
+// 用返回的 ctx 发起加密信封请求（进件/分账/余额/提现），
+// SDK 会把最近一次 SignObjectResp 写入容器（含失败请求），
+// 随后经 SignObjectRespFromContext 读取。
 //
 // 用法：
 //
 //	ctx = hst.WithSignObjectResp(ctx)
 //	result, err := client.CreatePrepare(ctx, dto)
-//	resp := hst.SignObjectRespFromContext(ctx) // 可能为 nil
+//	resp := hst.SignObjectRespFromContext(ctx)
+//
+// 注意：不要把同一挂载 ctx 共享给多个 goroutine 并发请求，
+// 容器只保留最后一次写入；并发场景各 goroutine 各自挂载。
 func WithSignObjectResp(ctx context.Context) context.Context {
-	return context.WithValue(ctx, signObjectRespKey{}, &atomic.Pointer[SignObjectResp]{})
+	return context.WithValue(ctx, signObjectRespKey{}, &signObjectRespHolder{})
 }
 
 // SignObjectRespFromContext 从 ctx 获取最近一次请求的网关响应信封。
-// ctx 未经过 WithSignObjectResp 挂载或尚无请求完成时返回 nil。
-//
-// 如无需按调用点隔离，可直接使用 client.LastSignObjectResp()，无需预先挂载。
+// ctx 未挂载容器或尚无请求完成时返回 nil。
+// 若解密成功，resp.Body 为业务明文 JSON。
 func SignObjectRespFromContext(ctx context.Context) *SignObjectResp {
-	if p, ok := ctx.Value(signObjectRespKey{}).(*atomic.Pointer[SignObjectResp]); ok {
-		return p.Load()
+	if h, ok := ctx.Value(signObjectRespKey{}).(*signObjectRespHolder); ok {
+		return h.resp
 	}
 	return nil
-}
-
-// LastSignObjectResp 返回本客户端最近一次加密信封响应。
-// 任何加密信封请求（Request）完成后无条件更新，无需预先挂载收集器即可读取：
-//
-//	result, err := client.CreatePrepare(ctx, dto)
-//	resp := client.LastSignObjectResp() // 一定有值（此前至少完成过一次信封请求）
-//
-// 含失败请求（网关层错误、验签失败）的信封；resp.Body 已是解密后的业务明文 JSON。
-// 并发请求下返回最后完成的那次，如需按调用点精确隔离请使用 WithSignObjectResp。
-func (x *Hst) LastSignObjectResp() *SignObjectResp {
-	return x.lastSignObjectResp.Load()
 }
 
 func (x *Hst) Request(ctx context.Context, path string, signObjectReq *SignObjectReq) (_ string, err error) {
@@ -181,12 +173,9 @@ func (x *Hst) Request(ctx context.Context, path string, signObjectReq *SignObjec
 		return
 	}
 
-	// 客户端级快照：无条件写入，保证 LastSignObjectResp 一定可读
-	x.lastSignObjectResp.Store(signObjectResp)
-
-	// 若调用方通过 WithSignObjectResp 挂载了收集器，原子写入最近一次信封
-	if p, ok := ctx.Value(signObjectRespKey{}).(*atomic.Pointer[SignObjectResp]); ok {
-		p.Store(signObjectResp)
+	// 写入调用方挂载的信封容器（若有）；网络错误/解析失败路径不会到达此处
+	if h, ok := ctx.Value(signObjectRespKey{}).(*signObjectRespHolder); ok {
+		h.resp = signObjectResp
 	}
 
 	if resp.StatusCode() != 200 {
