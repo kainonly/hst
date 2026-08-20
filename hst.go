@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"sync/atomic"
 
 	"github.com/bytedance/sonic"
 	"github.com/kainonly/go/help"
@@ -124,6 +125,31 @@ type SignObjectResp struct {
 	Body         string `json:"body"`         // SM4 加密后的业务 JSON（Base64）
 }
 
+// signObjectRespKey ctx 中挂载网关响应信封收集器的 key。
+type signObjectRespKey struct{}
+
+// WithSignObjectResp 在 ctx 上挂载网关响应信封收集器，
+// 随后用同一 ctx 发起的加密信封请求（Request）会把最近一次
+// SignObjectResp 原子写入收集器（含失败请求），供事后审计/日志使用。
+//
+// 用法：
+//
+//	ctx = hst.WithSignObjectResp(ctx)
+//	result, err := client.CreatePrepare(ctx, dto)
+//	resp := hst.SignObjectRespFromContext(ctx) // 可能为 nil
+func WithSignObjectResp(ctx context.Context) context.Context {
+	return context.WithValue(ctx, signObjectRespKey{}, &atomic.Pointer[SignObjectResp]{})
+}
+
+// SignObjectRespFromContext 从 ctx 获取最近一次请求的网关响应信封。
+// ctx 未经过 WithSignObjectResp 挂载或尚无请求完成时返回 nil。
+func SignObjectRespFromContext(ctx context.Context) *SignObjectResp {
+	if p, ok := ctx.Value(signObjectRespKey{}).(*atomic.Pointer[SignObjectResp]); ok {
+		return p.Load()
+	}
+	return nil
+}
+
 func (x *Hst) Request(ctx context.Context, path string, signObjectReq *SignObjectReq) (_ string, err error) {
 	var resp *resty.Response
 	if resp, err = x.Client.R().SetContext(ctx).
@@ -136,7 +162,11 @@ func (x *Hst) Request(ctx context.Context, path string, signObjectReq *SignObjec
 	if err = sonic.Unmarshal(resp.Bytes(), &signObjectResp); err != nil {
 		return
 	}
-	ctx = context.WithValue(ctx, "resp", signObjectResp)
+
+	// 若调用方通过 WithSignObjectResp 挂载了收集器，原子写入最近一次信封
+	if p, ok := ctx.Value(signObjectRespKey{}).(*atomic.Pointer[SignObjectResp]); ok {
+		p.Store(signObjectResp)
+	}
 
 	if resp.StatusCode() != 200 {
 		err = help.E(0, fmt.Sprintf(`txn=%s code=%s，%s`,
