@@ -559,7 +559,8 @@ func NewHst(option *Option) (*Hst, error)
 func (x *Hst) NewSignObjectReq(body Body) (*SignObjectReq, error) // 组装加密信封（特殊场景）
 func (x *Hst) Request(ctx context.Context, path string, signObjectReq *SignObjectReq) (string, error) // 发送信封请求，返回解密明文
 func WithSignObjectResp(ctx context.Context) context.Context      // ctx 挂载信封收集器
-func SignObjectRespFromContext(ctx context.Context) *SignObjectResp // 读取最近一次信封
+func SignObjectRespFromContext(ctx context.Context) *SignObjectResp // 读取最近一次信封（ctx 级）
+func (x *Hst) LastSignObjectResp() *SignObjectResp // 读取最近一次信封（客户端级，永远可用）
 ```
 
 ### DTO 构造函数签名
@@ -612,7 +613,22 @@ func NewUploadFileFromFileHeader(fh *multipart.FileHeader) (*UploadFile, error) 
 
 ## 获取网关响应信封
 
-加密信封类接口（进件、分账、余额、提现）如需记录 `clientReqTxn`、`timestamp`、`signature` 等信封字段（审计/对账），先在 ctx 上挂载收集器，调用后即可读取最近一次请求的信封（失败请求同样会写入）：
+加密信封类接口（进件、分账、余额、提现）如需记录 `clientReqTxn`、`timestamp`、`signature` 等信封字段（审计/对账），有两种方式。
+
+**方式一（推荐）：客户端级读取，永远可用，零前置操作**
+
+```go
+result, err := client.CreatePrepare(ctx, dto)
+
+if resp := client.LastSignObjectResp(); resp != nil {
+    log.Printf("txn=%s timestamp=%s", resp.ClientReqTxn, resp.Timestamp)
+    // resp.Body 已是解密后的业务明文 JSON
+}
+```
+
+每次加密信封请求完成后无条件更新（含失败请求）；并发请求下返回最后完成的那次。
+
+**方式二：ctx 级收集器，按调用点隔离（并发场景精确到每次调用）**
 
 ```go
 ctx = hst.WithSignObjectResp(ctx)
@@ -621,12 +637,11 @@ result, err := client.CreatePrepare(ctx, dto)
 
 if resp := hst.SignObjectRespFromContext(ctx); resp != nil {
     log.Printf("txn=%s timestamp=%s", resp.ClientReqTxn, resp.Timestamp)
-    // resp.Body 已是解密后的业务明文 JSON
 }
 ```
 
 > 同一 ctx 连续发起多次请求时，收集器保存的是最近一次的信封；需要逐次记录时，每次调用前重新 `WithSignObjectResp`。
-> `UploadFiles` / `TradeImport` 为 multipart 普通响应，不产生加密信封。
+> `UploadFiles` / `TradeImport` 为 multipart 普通响应，不产生加密信封（方式一读到的是此前最近一次信封请求的结果）。
 
 ## 数据类型
 

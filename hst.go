@@ -43,6 +43,10 @@ type M map[string]any
 type Hst struct {
 	Option *Option
 	Client *resty.Client
+
+	// lastSignObjectResp 最近一次加密信封响应快照，
+	// 由 Request 每次信封请求后无条件原子写入，LastSignObjectResp 读取。
+	lastSignObjectResp atomic.Pointer[SignObjectResp]
 }
 
 type Option struct {
@@ -143,11 +147,25 @@ func WithSignObjectResp(ctx context.Context) context.Context {
 
 // SignObjectRespFromContext 从 ctx 获取最近一次请求的网关响应信封。
 // ctx 未经过 WithSignObjectResp 挂载或尚无请求完成时返回 nil。
+//
+// 如无需按调用点隔离，可直接使用 client.LastSignObjectResp()，无需预先挂载。
 func SignObjectRespFromContext(ctx context.Context) *SignObjectResp {
 	if p, ok := ctx.Value(signObjectRespKey{}).(*atomic.Pointer[SignObjectResp]); ok {
 		return p.Load()
 	}
 	return nil
+}
+
+// LastSignObjectResp 返回本客户端最近一次加密信封响应。
+// 任何加密信封请求（Request）完成后无条件更新，无需预先挂载收集器即可读取：
+//
+//	result, err := client.CreatePrepare(ctx, dto)
+//	resp := client.LastSignObjectResp() // 一定有值（此前至少完成过一次信封请求）
+//
+// 含失败请求（网关层错误、验签失败）的信封；resp.Body 已是解密后的业务明文 JSON。
+// 并发请求下返回最后完成的那次，如需按调用点精确隔离请使用 WithSignObjectResp。
+func (x *Hst) LastSignObjectResp() *SignObjectResp {
+	return x.lastSignObjectResp.Load()
 }
 
 func (x *Hst) Request(ctx context.Context, path string, signObjectReq *SignObjectReq) (_ string, err error) {
@@ -162,6 +180,9 @@ func (x *Hst) Request(ctx context.Context, path string, signObjectReq *SignObjec
 	if err = sonic.Unmarshal(resp.Bytes(), &signObjectResp); err != nil {
 		return
 	}
+
+	// 客户端级快照：无条件写入，保证 LastSignObjectResp 一定可读
+	x.lastSignObjectResp.Store(signObjectResp)
 
 	// 若调用方通过 WithSignObjectResp 挂载了收集器，原子写入最近一次信封
 	if p, ok := ctx.Value(signObjectRespKey{}).(*atomic.Pointer[SignObjectResp]); ok {
