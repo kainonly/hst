@@ -55,7 +55,7 @@ func TestUploadFiles(t *testing.T) {
 		dto.SetFiles(fieldName, hst.NewUploadFile(filepath.Base(filePath), fileBytes))
 	}
 
-	result, err := client.UploadFiles(ctx, dto)
+	result, _, err := client.UploadFiles(ctx, dto)
 	if err != nil {
 		logResult(t, "upload_files", errorLogData{false, err.Error()})
 		t.Fatalf("UploadFiles 失败: %v", err)

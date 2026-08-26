@@ -208,7 +208,7 @@ type UploadFilesRespData struct {
 //
 // 与标准 JSON 加密流程相互独立，响应为普通 JSON（非加密信封）。
 // uploadToken 为一次性凭证，无论本次上传成功与否都会被消费；上传失败需从 Step 1 重新开始。
-func (x *Hst) UploadFiles(ctx context.Context, dto *UploadFilesDto) (bizData *UploadFilesBizData, err error) {
+func (x *Hst) UploadFiles(ctx context.Context, dto *UploadFilesDto) (bizData *UploadFilesBizData, uploadResp *UploadFilesResp, err error) {
 	if err = dto.validateFields(); err != nil {
 		return
 	}
@@ -228,12 +228,13 @@ func (x *Hst) UploadFiles(ctx context.Context, dto *UploadFilesDto) (bizData *Up
 	}
 
 	if resp.StatusCode() != 200 {
+		// HTTP 错误时仍尝试保留可解析的外层响应，供调用方记录。
+		_ = sonic.Unmarshal(resp.Bytes(), &uploadResp)
 		err = help.E(0, fmt.Sprintf(`第三方接口响应失败! status=%d body=%s`,
 			resp.StatusCode(), resp.String()))
 		return
 	}
 
-	var uploadResp *UploadFilesResp
 	if err = sonic.Unmarshal(resp.Bytes(), &uploadResp); err != nil {
 		return
 	}

@@ -271,7 +271,7 @@ dto := hst.NewUploadFilesDto("<upload_token>"). // uploadToken 来自 CreatePrep
     SetFiles("certPhotoBFiles", hst.NewUploadFile("sfz-b.jpg", dataB)). // 身份证国徽面
     SetFiles("licensePhotoFiles", hst.NewUploadFile("yyzz.jpg", dataC)) // 营业执照
 
-bizData, err := client.UploadFiles(ctx, dto)
+bizData, _, err := client.UploadFiles(ctx, dto)
 // bizData.DraftId     — 草稿 ID
 // bizData.DraftStatus — 草稿状态 EDITING/SUBMITTING/CONFIRMED/FAILED
 ```
@@ -289,7 +289,7 @@ func uploadHandler(ctx app.RequestContext, client *hst.Hst) {
     // data 在 Step 1 已计算 SM3 哈希，此处直接透传
     dto := hst.NewUploadFilesDto(token).
         SetFiles("certPhotoAFiles", hst.NewUploadFile(fh.Filename, data))
-    bizData, err := client.UploadFiles(ctx, dto)
+    bizData, _, err := client.UploadFiles(ctx, dto)
     _ = bizData
 }
 ```
@@ -539,7 +539,7 @@ multipart 类方法返回业务数据本身（无信封包装）。
 // 进件（加密信封，除 UploadFiles）
 func (x *Hst) CreatePrepare(ctx context.Context, dto *CreatePrepareDto) (*SignObjectRespResult[*CreatePrepareBizData], *SignObjectResp, error)
 func (x *Hst) UpdatePrepare(ctx context.Context, dto *UpdatePrepareDto) (*SignObjectRespResult[*UpdatePrepareBizData], *SignObjectResp, error)
-func (x *Hst) UploadFiles(ctx context.Context, dto *UploadFilesDto) (*UploadFilesBizData, error) // multipart
+func (x *Hst) UploadFiles(ctx context.Context, dto *UploadFilesDto) (*UploadFilesBizData, *UploadFilesResp, error) // multipart
 func (x *Hst) Confirm(ctx context.Context, dto *ConfirmDto) (*SignObjectRespResult[*ConfirmBizData], *SignObjectResp, error)
 func (x *Hst) SettlementStatus(ctx context.Context, dto *SettlementStatusDto) (*SignObjectRespResult[*SettlementStatusBizData], *SignObjectResp, error)
 
