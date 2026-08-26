@@ -262,17 +262,14 @@ result, err := client.CreatePrepare(ctx, dto)
 
 两步上传 **Step 2**。以 `multipart/form-data` 携带凭证与文件上传，服务端按字段名 + 顺序重算 SM3 比对。
 
-文件通过 `*hst.UploadFile` 提供三种来源构造：
-
-- `hst.NewUploadFileFromPath(path)` — 本地文件路径
-- `hst.NewUploadFileFromReader(name, reader)` — 任意 `io.Reader` 流（内存、网络流等，无需落盘）
-- `hst.NewUploadFileFromFileHeader(fh)` — Hertz / Gin 等框架 `FormFile()` 返回的 `*multipart.FileHeader`，可直接流式转发用户上传的文件
+文件通过 `hst.NewUploadFile(name, data)` 构造：文件名 + 内容字节。典型场景是业务方在自己的接口中已收到用户上传的文件（`[]byte`），Step 1 用同一份字节计算 SM3 哈希提交 `FileManifest`，Step 2 直接透传该字节，全程无需落盘：
 
 ```go
+dataA, _ := os.ReadFile("files/sfz-a.jpg") // 实际场景为接口收到的上传内容
 dto := hst.NewUploadFilesDto("<upload_token>"). // uploadToken 来自 CreatePrepare/UpdatePrepare
-    SetCertPhotoAFiles(hst.NewUploadFileFromPath("files/sfz-a.jpg")).  // 身份证人像面
-    SetCertPhotoBFiles(hst.NewUploadFileFromPath("files/sfz-b.jpg")).  // 身份证国徽面
-    SetLicensePhotoFiles(hst.NewUploadFileFromPath("files/yyzz.jpg"))  // 营业执照
+    SetCertPhotoAFiles(hst.NewUploadFile("sfz-a.jpg", dataA)).  // 身份证人像面
+    SetCertPhotoBFiles(hst.NewUploadFile("sfz-b.jpg", dataB)).  // 身份证国徽面
+    SetLicensePhotoFiles(hst.NewUploadFile("yyzz.jpg", dataC))  // 营业执照
 
 bizData, err := client.UploadFiles(ctx, dto)
 // bizData.DraftId     — 草稿 ID
@@ -284,13 +281,18 @@ Hertz 接口中直接转发（不落盘）：
 ```go
 func uploadHandler(ctx app.RequestContext, client *hst.Hst) {
     fh, _ := ctx.FormFile("certPhotoA")
-    file, err := hst.NewUploadFileFromFileHeader(fh)
-    // ... err 处理
+    f, _ := fh.Open()
+    defer f.Close()
+    data, _ := io.ReadAll(f)
+    // data 在 Step 1 已计算 SM3 哈希，此处直接透传
+    file := hst.NewUploadFile(fh.Filename, data)
     dto := hst.NewUploadFilesDto(token).SetCertPhotoAFiles(file)
     bizData, err := client.UploadFiles(ctx, dto)
     _ = bizData
 }
 ```
+
+> `Data` 字节须与 Step 1 计算 SM3 哈希的字节完全一致，否则服务端重算比对不一致将拒绝。
 
 > `uploadToken` 为一次性凭证，无论成功与否都会被消费。上传字段须与 Step 1 的 `FileManifest` 一致。
 
@@ -588,9 +590,7 @@ func NewApplyDto(merchantNo, outWithdrawNo, totalAmount string) *ApplyDto
 func NewTradeQueryDto(merchantNo, outWithdrawNo string) *TradeQueryDto
 
 // 上传文件源（仅 UploadFiles 使用）
-func NewUploadFileFromPath(path string) *UploadFile                          // 本地路径
-func NewUploadFileFromReader(name string, reader io.Reader) *UploadFile      // 任意流
-func NewUploadFileFromFileHeader(fh *multipart.FileHeader) (*UploadFile, error) // Hertz/Gin FormFile
+func NewUploadFile(name string, data []byte) *UploadFile // 文件名 + 内容字节（与 Step 1 SM3 哈希的字节一致）
 ```
 
 ### 响应 BizData 关键字段

@@ -1,71 +1,43 @@
 package hst
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"io"
-	"mime/multipart"
 
 	"github.com/bytedance/sonic"
 	"github.com/kainonly/go/help"
 	"resty.dev/v3"
 )
 
-// UploadFile 上传文件源。
-// Path 与 Reader 二选一：设置 Reader 时以流方式上传（无需落盘），否则按 Path 打开本地文件。
-// Name 为 multipart 文件名，Path 模式下留空自动取文件基名；
-// Type 为 Content-Type，留空时由 resty 自动嗅探（读取前 512 字节）。
+// UploadFile 上传文件（文件名 + 内容字节）。
+// 典型场景：业务方在自己的接口中已收到用户上传的文件（[]byte），
+// Step 1 用同一份字节计算 SM3 哈希提交 FileManifest，
+// Step 2 直接透传该字节构造本类型，全程无需落盘。
 type UploadFile struct {
-	Path   string
-	Reader io.Reader
-	Name   string
-	Type   string
-	Size   int64 // Reader 模式下的内容大小（可选，进度回调用）
+	Name string // multipart 文件名（含扩展名，如 sfz-a.jpg）
+	Data []byte // 文件内容，须与 Step 1 计算 SM3 哈希的字节完全一致
 }
 
-// NewUploadFileFromPath 从本地文件路径构造上传文件。
-func NewUploadFileFromPath(path string) *UploadFile {
-	return &UploadFile{Path: path}
-}
-
-// NewUploadFileFromReader 从 io.Reader 构造上传文件（内存流、网络流等，无需落盘）。
-// name 为 multipart 文件名（含扩展名，如 sfz-a.jpg）。
-func NewUploadFileFromReader(name string, reader io.Reader) *UploadFile {
-	return &UploadFile{Name: name, Reader: reader}
-}
-
-// NewUploadFileFromFileHeader 从 *multipart.FileHeader 构造上传文件，
-// 可直接传入 Hertz / Gin 等框架 FormFile() 的返回值实现请求文件流式转发，无需落盘。
-// 注意：FileHeader 打开的流是一次性的，构造后不可重复使用。
-func NewUploadFileFromFileHeader(fh *multipart.FileHeader) (file *UploadFile, err error) {
-	var f multipart.File
-	if f, err = fh.Open(); err != nil {
-		return
-	}
-	file = &UploadFile{
-		Name:   fh.Filename,
-		Type:   fh.Header.Get("Content-Type"),
-		Size:   fh.Size,
-		Reader: f,
-	}
-	return
+// NewUploadFile 创建上传文件。
+// name 为 multipart 文件名（含扩展名），data 为文件内容字节。
+func NewUploadFile(name string, data []byte) *UploadFile {
+	return &UploadFile{Name: name, Data: data}
 }
 
 // field 生成 resty multipart 字段。
+// Content-Type 留空，由 resty 读取前 512 字节自动嗅探。
 func (x *UploadFile) field(name string) *resty.MultipartField {
 	return &resty.MultipartField{
-		Name:        name,
-		FileName:    x.Name,
-		ContentType: x.Type,
-		Reader:      x.Reader,
-		FilePath:    x.Path,
-		FileSize:    x.Size,
+		Name:     name,
+		FileName: x.Name,
+		Reader:   bytes.NewReader(x.Data),
+		FileSize: int64(len(x.Data)),
 	}
 }
 
 // UploadFilesDto 上传资质文件请求体（multipart/form-data）。
-// 每个字段对应一种资质，值为按上传顺序排列的上传文件列表，
-// 支持 NewUploadFileFromPath / NewUploadFileFromReader / NewUploadFileFromFileHeader 构造。
+// 每个字段对应一种资质，值为按上传顺序排列的上传文件列表（NewUploadFile 构造）。
 // 仅 fileManifest 中出现且哈希数量 > 0 的字段必须按顺序上传对应数量的文件；
 // 清单中为空或未出现的字段不可上传（否则视为夹带未签名文件而拒绝）。
 type UploadFilesDto struct {

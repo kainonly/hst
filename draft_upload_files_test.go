@@ -47,19 +47,21 @@ func TestUploadFiles(t *testing.T) {
 			t.Logf("字段 %s 无本地文件映射，跳过", fieldName)
 			continue
 		}
-		if _, err := os.Stat(filePath); err != nil {
+		fileBytes, err := os.ReadFile(filePath)
+		if err != nil {
 			t.Logf("本地文件 %s 不存在，跳过字段 %s", filePath, fieldName)
 			continue
 		}
+		file := hst.NewUploadFile(filepath.Base(filePath), fileBytes)
 		switch fieldName {
 		case "certPhotoAFiles":
-			dto.SetCertPhotoAFiles(hst.NewUploadFileFromPath(filePath))
+			dto.SetCertPhotoAFiles(file)
 		case "certPhotoBFiles":
-			dto.SetCertPhotoBFiles(hst.NewUploadFileFromPath(filePath))
+			dto.SetCertPhotoBFiles(file)
 		case "licensePhotoFiles":
-			dto.SetLicensePhotoFiles(hst.NewUploadFileFromPath(filePath))
+			dto.SetLicensePhotoFiles(file)
 		case "shopPhotoFiles":
-			dto.SetShopPhotoFiles(hst.NewUploadFileFromPath(filePath))
+			dto.SetShopPhotoFiles(file)
 		}
 	}
 

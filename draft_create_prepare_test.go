@@ -24,7 +24,7 @@ func TestCreatePrepare(t *testing.T) {
 
 	// fileManifest：对 files 目录下的真实资质图片计算 SM3 哈希
 	const filesDir = "files"
-	//certPhotoAHash := sm3HashFile(t, filepath.Join(filesDir, "sfz-a.jpg"))
+	certPhotoAHash := sm3HashFile(t, filepath.Join(filesDir, "sfz-a.jpg"))
 	//certPhotoBHash := sm3HashFile(t, filepath.Join(filesDir, "sfz-b.jpg"))
 	//licensePhotoHash := sm3HashFile(t, filepath.Join(filesDir, "yyzz.jpg"))
 
