@@ -55,7 +55,7 @@ type UpdatePrepareDto struct {
 	WxSubMchAccount       string        `json:"wxSubMchAccount,omitempty"`       // 微信收款账号
 	SettlementAccountType string        `json:"settlementAccountType,omitempty"` // 结算类型：01(银行卡)/02(支付宝)/03(支付宝虚拟账户)
 	BankCardNo            string        `json:"bankCardNo,omitempty"`            // 银行卡号
-	BankCertName          string        `json:"bankCertName,omitempty"`          // 银行账户户名（仅对公账户 02 需要）
+	BankCertName          string        `json:"bankCertName,omitempty"`          // 银行账户户名
 	AccountType           string        `json:"accountType,omitempty"`           // 账户类型：01(对私账户)/02(对公账户)
 	ContactLine           string        `json:"contactLine,omitempty"`           // 联行号
 	BranchName            string        `json:"branchName,omitempty"`            // 开户支行名称
@@ -139,22 +139,16 @@ func (x *UpdatePrepareDto) SetSettlementAccountType(i string) *UpdatePrepareDto 
 }
 
 // SetBank 一次性设置结算账户信息
-// （bankCardNo 银行卡号、accountType 账户类型 01对私/02对公、
+// （bankCardNo 银行卡号、bankCertName 银行账户户名、accountType 账户类型 01对私/02对公、
 // branchName 开户支行名称、branchProvince 开户支行所在省、branchCity 开户支行所在市）。
-// 银行账户户名 bankCertName 仅对公账户（02）需要，经 SetBankCertName 单独设置；
 // 联行号 contactLine 为非必填，经 SetContactLine 单独设置。
-func (x *UpdatePrepareDto) SetBank(bankCardNo, accountType, branchName, branchProvince, branchCity string) *UpdatePrepareDto {
+func (x *UpdatePrepareDto) SetBank(bankCardNo, bankCertName, accountType, branchName, branchProvince, branchCity string) *UpdatePrepareDto {
 	x.BankCardNo = bankCardNo
+	x.BankCertName = bankCertName
 	x.AccountType = accountType
 	x.BranchName = branchName
 	x.BranchProvince = branchProvince
 	x.BranchCity = branchCity
-	return x
-}
-
-// SetBankCertName 设置银行账户户名（仅对公账户 02 需要）。
-func (x *UpdatePrepareDto) SetBankCertName(i string) *UpdatePrepareDto {
-	x.BankCertName = i
 	return x
 }
 

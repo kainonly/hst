@@ -27,7 +27,7 @@ func TestCreatePrepare(t *testing.T) {
 	const filesDir = "files"
 	certPhotoAHash := sm3HashFile(t, filepath.Join(filesDir, "sfz-a.jpg"))
 	certPhotoBHash := sm3HashFile(t, filepath.Join(filesDir, "sfz-b.jpg"))
-	licensePhotoHash := sm3HashFile(t, filepath.Join(filesDir, "yyzz.jpg"))
+	//licensePhotoHash := sm3HashFile(t, filepath.Join(filesDir, "yyzz.jpg"))
 
 	dto := hst.NewCreatePrepareDto(
 		cfg.PersonUsername,
@@ -36,21 +36,21 @@ func TestCreatePrepare(t *testing.T) {
 		"01", "brand_other", "01", "7299",
 		cfg.PersonMobile,
 		cfg.PersonUsername,
-		"test@example.com",
+		"",
 	).
 		SetPrincipal(cfg.PersonMobile, "100", cfg.PersonCertNo, cfg.PersonUsername, "2031-05-20 00:00:00").
 		SetLocation("460000", "460100", "460105", "海南省海口市秀英区XX路XX号", cfg.PersonMobile).
 		SetPerson("M", "自由职业").
 		SetSettlementAccountType("01"). // 结算类型：01 银行卡
-		SetBank(cfg.PersonBankCardNo, "01",
+		SetBank(cfg.PersonBankCardNo, cfg.PersonUsername, "01",
 			"中国农业银行海口秀英支行", "460000", "460100",
 		).
 		SetContactLine("310100000000"). // 联行号（非必填）
 		SetCardHolder("01", cfg.PersonCertNo, "海南省海口市秀英区XX路XX号").
 		SetFileManifest(&hst.FileManifest{
-			CertPhotoAFiles:   []string{certPhotoAHash},   // 身份证人像面
-			CertPhotoBFiles:   []string{certPhotoBHash},   // 身份证国徽面
-			LicensePhotoFiles: []string{licensePhotoHash}, // 营业执照
+			CertPhotoAFiles: []string{certPhotoAHash}, // 身份证人像面
+			CertPhotoBFiles: []string{certPhotoBHash}, // 身份证国徽面
+			//LicensePhotoFiles: []string{licensePhotoHash}, // 营业执照
 		}).
 		SetLogonId(cfg.PersonMybankAccount). // logonId（网商二类户）
 		SetUserId(cfg.PersonUid).
