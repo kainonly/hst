@@ -11,19 +11,19 @@ import (
 type UpdatePrepareDto struct {
 	ReqTimestamp          string        `json:"reqTimestamp"`                    // 业务请求时间戳，须与外层信封 timestamp 一致（防重放）
 	ChannelNo             string        `json:"channelNo"`                       // 渠道号
-	DraftId               string        `json:"draftId"`                         // 草稿 ID（仅 EDITING/FAILED 状态可更新）
-	ProductCode           []string      `json:"productCode,omitempty"`           // 已选产品编码列表（WiCoinProductCode 枚举）
+	DraftId               string        `json:"draftId"`                         // 草稿 ID（UploadFiles 响应返回，仅 EDITING/FAILED 状态可更新）
+	ProductCode           []string      `json:"productCode,omitempty"`           // 已选产品编码列表，WiCoinProductCode 枚举：WICOIN_PAY/WICOIN_ZFT/WICOIN_MYBANK_SPLIT_ACCOUNT/WICOIN_SECURE_PAY
 	LegalName             string        `json:"legalName,omitempty"`             // 法定名称（营业执照上的公司名称）
 	ShortName             string        `json:"shortName,omitempty"`             // 商户简称 / 常用名
 	MerchantBaseType      string        `json:"merchantBaseType,omitempty"`      // 商户类型：01(自然人)/02(个体工商户)/03(企业商户)
-	SubRoleType           string        `json:"subRoleType,omitempty"`           // 商户角色
+	SubRoleType           string        `json:"subRoleType,omitempty"`           // 商户角色：shop_franchisee加盟商门店/shop_direct直营门店/shop_joint联营门店/supplier_brandSupplyChain品牌供应链公司/supplier_external外部供应商/brand_manage品牌管理公司/brand_area品牌区域公司/brand_other其他服务公司
 	DealType              string        `json:"dealType,omitempty"`              // 商户经营类型：01(实体特约)/02(网络特约)/03(实体兼网络特约)
 	Mcc                   string        `json:"mcc,omitempty"`                   // 经营类目（MCC 码）
 	ContactMobile         string        `json:"contactMobile,omitempty"`         // 联系人手机号
 	ContactName           string        `json:"contactName,omitempty"`           // 联系人姓名
 	Email                 string        `json:"email,omitempty"`                 // 联系人邮箱
 	PrincipalMobile       string        `json:"principalMobile,omitempty"`       // 负责人手机号（即法人手机号）
-	PrincipalCertType     string        `json:"principalCertType,omitempty"`     // 负责人证件类型
+	PrincipalCertType     string        `json:"principalCertType,omitempty"`     // 负责人证件类型：100身份证/102护照/108外国人永久居留身份证/114台湾居民来往大陆通行证/115港澳居民来往内地通行证/116港澳居民居住证/117台湾居民居住证
 	PrincipalCertNo       string        `json:"principalCertNo,omitempty"`       // 负责人证件号码
 	PrincipalPerson       string        `json:"principalPerson,omitempty"`       // 负责人名称或企业法人代表姓名
 	PrincipalCertVld      string        `json:"principalCertVld,omitempty"`      // 负责人证件有效期，格式 yyyy-MM-dd HH:mm:ss
@@ -42,7 +42,7 @@ type UpdatePrepareDto struct {
 	PersonSex             string        `json:"personSex,omitempty"`             // 性别（自然人商户）：M(男性)/F(女性)
 	PersonProfession      string        `json:"personProfession,omitempty"`      // 职业（自然人商户）
 	PersonCertVld         string        `json:"personCertVld,omitempty"`         // 身份证件有效期限（自然人商户），格式 yyyy-MM-dd HH:mm:ss
-	BussAuthType          string        `json:"bussAuthType,omitempty"`          // 营业执照证件类型
+	BussAuthType          string        `json:"bussAuthType,omitempty"`          // 营业执照证件类型：12营业执照/统一社会信用代码/41政府机关证件/42部队证件/43社会团体证件/44事业单位证件/45民办非企业组织证件/99其它企业类型证件
 	BussAuthNo            string        `json:"bussAuthNo,omitempty"`            // 证件号码（营业执照号或统一社会信用代码）
 	Remark                string        `json:"remark,omitempty"`                // 备注
 	PartnerId             string        `json:"partnerId,omitempty"`             // 渠道商 ID
@@ -55,7 +55,7 @@ type UpdatePrepareDto struct {
 	WxSubMchAccount       string        `json:"wxSubMchAccount,omitempty"`       // 微信收款账号
 	SettlementAccountType string        `json:"settlementAccountType,omitempty"` // 结算类型：01(银行卡)/02(支付宝)/03(支付宝虚拟账户)
 	BankCardNo            string        `json:"bankCardNo,omitempty"`            // 银行卡号
-	BankCertName          string        `json:"bankCertName,omitempty"`          // 银行账户户名
+	BankCertName          string        `json:"bankCertName,omitempty"`          // 银行账户户名（仅对公账户 02 需要）
 	AccountType           string        `json:"accountType,omitempty"`           // 账户类型：01(对私账户)/02(对公账户)
 	ContactLine           string        `json:"contactLine,omitempty"`           // 联行号
 	BranchName            string        `json:"branchName,omitempty"`            // 开户支行名称
@@ -66,7 +66,7 @@ type UpdatePrepareDto struct {
 	CardHolderAddress     string        `json:"cardHolderAddress,omitempty"`     // 持卡人地址
 	LogonId               string        `json:"logonId,omitempty"`               // 支付宝登陆账号
 	UserId                string        `json:"userId,omitempty"`                // 支付宝用户 ID
-	FileManifest          *FileManifest `json:"fileManifest,omitempty"`          // 文件哈希清单：仅包含新文件字段，未提供的字段草稿保留原有文件
+	FileManifest          *FileManifest `json:"fileManifest,omitempty"`          // 文件哈希清单（非必填）：仅包含有新文件的字段，未提供的字段草稿保留原有文件；无需更新文件时整体省略
 }
 
 func (x *UpdatePrepareDto) GetTs() string {
@@ -74,6 +74,8 @@ func (x *UpdatePrepareDto) GetTs() string {
 }
 
 // NewUpdatePrepareDto 创建更新草稿并申请上传凭证请求体。
+// 除 draftId 外的必填参数与 CreatePrepareDto 完全一致；
+// 业务字段须整体重新提交（非增量更新），与创建请求的必填规则相同。
 func NewUpdatePrepareDto(
 	draftId string,
 	legalName string,
@@ -137,16 +139,28 @@ func (x *UpdatePrepareDto) SetSettlementAccountType(i string) *UpdatePrepareDto 
 }
 
 // SetBank 一次性设置结算账户信息
-// （bankCardNo 银行卡号、bankCertName 银行账户户名、accountType 账户类型 01对私/02对公、
-// contactLine 联行号、branchName 开户支行名称、branchProvince 开户支行所在省、branchCity 开户支行所在市）。
-func (x *UpdatePrepareDto) SetBank(bankCardNo, bankCertName, accountType, contactLine, branchName, branchProvince, branchCity string) *UpdatePrepareDto {
+// （bankCardNo 银行卡号、accountType 账户类型 01对私/02对公、
+// branchName 开户支行名称、branchProvince 开户支行所在省、branchCity 开户支行所在市）。
+// 银行账户户名 bankCertName 仅对公账户（02）需要，经 SetBankCertName 单独设置；
+// 联行号 contactLine 为非必填，经 SetContactLine 单独设置。
+func (x *UpdatePrepareDto) SetBank(bankCardNo, accountType, branchName, branchProvince, branchCity string) *UpdatePrepareDto {
 	x.BankCardNo = bankCardNo
-	x.BankCertName = bankCertName
 	x.AccountType = accountType
-	x.ContactLine = contactLine
 	x.BranchName = branchName
 	x.BranchProvince = branchProvince
 	x.BranchCity = branchCity
+	return x
+}
+
+// SetBankCertName 设置银行账户户名（仅对公账户 02 需要）。
+func (x *UpdatePrepareDto) SetBankCertName(i string) *UpdatePrepareDto {
+	x.BankCertName = i
+	return x
+}
+
+// SetContactLine 设置联行号（非必填）。
+func (x *UpdatePrepareDto) SetContactLine(i string) *UpdatePrepareDto {
+	x.ContactLine = i
 	return x
 }
 
@@ -170,7 +184,8 @@ func (x *UpdatePrepareDto) SetUserId(i string) *UpdatePrepareDto {
 	return x
 }
 
-// SetFileManifest 设置文件哈希清单。
+// SetFileManifest 设置文件哈希清单（非必填）。
+// 仅需包含有新文件的字段，未提供的字段草稿保留原有文件；无需更新文件时可不调用。
 func (x *UpdatePrepareDto) SetFileManifest(i *FileManifest) *UpdatePrepareDto {
 	x.FileManifest = i
 	return x
@@ -282,6 +297,14 @@ type UpdatePrepareBizData struct {
 	ExpireSeconds int64  `json:"expireSeconds"`
 }
 
+// UpdatePrepare 更新草稿并申请上传凭证（两步上传 Step 1）。
+// 对已存在草稿提交修改后的业务字段与（若有新文件）文件哈希清单，换取一次性上传凭证；
+// 凭证有效期内调用 UploadFiles 完成实际文件上传后，草稿数据才会被更新。
+//
+// 约束：
+//   - 仅 EDITING（编辑中）或 FAILED（提交失败）状态的草稿可更新
+//   - 业务字段须整体重新提交（非增量更新），必填规则与 CreatePrepare 相同
+//   - fileManifest 非必填，仅需包含有新文件的字段；未提供的字段草稿保留原有文件
 func (x *Hst) UpdatePrepare(ctx context.Context, dto *UpdatePrepareDto) (result *SignObjectRespResult[*UpdatePrepareBizData], err error) {
 	dto.ChannelNo = x.Option.ChannelId
 

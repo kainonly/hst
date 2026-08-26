@@ -40,9 +40,10 @@ func TestUpdatePrepare(t *testing.T) {
 		SetLocation("460000", "460100", "460105", "海南省海口市秀英区更新路XX号", cfg.PersonMobile). // 修改：地址变更
 		SetPerson("M", "自由职业").
 		SetSettlementAccountType("01"). // 结算类型：01 银行卡
-		SetBank(cfg.PersonBankCardNo, cfg.PersonUsername, "01", "310100000000",
+		SetBank(cfg.PersonBankCardNo, "01",
 			"中国农业银行海口秀英支行", "460000", "460100",
 		).
+		SetContactLine("310100000000"). // 联行号（非必填）
 		SetCardHolder("01", cfg.PersonCertNo, "海南省海口市秀英区更新路XX号").
 		SetLogonId(cfg.PersonMybankAccount). // logonId（网商二类户）
 		SetUserId(cfg.PersonUid).

@@ -229,12 +229,12 @@ dto := hst.NewCreatePrepareDto(
     SetSettlementAccountType("01"). // 结算类型 01银行卡/02支付宝/03支付宝虚拟账户
     SetBank( // 结算账户
         "62220000000000000",     // bankCardNo
-        "上海某某科技有限公司",     // bankCertName
         "02",                    // accountType 01对私/02对公
-        "310100000000",          // contactLine
         "某银行上海徐汇支行",       // branchName
         "310000", "310100",      // branchProvince / branchCity
-    ).SetCardHolder( // 持卡人
+    ).SetBankCertName("上海某某科技有限公司"). // 对公账户需设户名；对私无需
+    SetContactLine("310100000000"). // 可选：联行号
+    SetCardHolder( // 持卡人
         "01",                    // certType 01身份证
         "310***********1234",    // certNo
         "上海市徐汇区XX路XX号",    // cardHolderAddress
