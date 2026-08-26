@@ -36,140 +36,75 @@ func (x *UploadFile) field(name string) *resty.MultipartField {
 	}
 }
 
+// uploadFileFields 合法的 multipart 文件字段名，与 FileManifest 字段一一对应，
+// 按文档 fileManifest 顺序排列（服务端按字段名定位、字段内按顺序比对 SM3）。
+var uploadFileFields = []string{
+	"certPhotoAFiles",             // 身份证人像面
+	"certPhotoBFiles",             // 身份证国徽面
+	"licensePhotoFiles",           // 营业执照
+	"prgPhotoFiles",               // 组织机构代码证
+	"industryLicensePhotoFiles",   // 开户许可证
+	"shopPhotoFiles",              // 门头照
+	"otherPhotoFiles",             // 其他资料
+	"certPhotoCFiles",             // 手持身份证
+	"registerProtocolPhotoFiles",  // 商户入驻协议
+	"contractPhotoFiles",          // 租赁协议
+	"shopEntrancePhotoFiles",      // 门店内景
+	"checkstandPhotoFiles",        // 收银台
+	"merchantAgreementPhotoFiles", // 商户协议
+}
+
 // UploadFilesDto 上传资质文件请求体（multipart/form-data）。
-// 每个字段对应一种资质，值为按上传顺序排列的上传文件列表（NewUploadFile 构造）。
-// 仅 fileManifest 中出现且哈希数量 > 0 的字段必须按顺序上传对应数量的文件；
-// 清单中为空或未出现的字段不可上传（否则视为夹带未签名文件而拒绝）。
+// 文件按 fileManifest 字段名组织，仅 fileManifest 中出现且哈希数量 > 0 的字段
+// 必须按顺序上传对应数量的文件；清单中为空或未出现的字段不可上传
+// （否则视为夹带未签名文件而拒绝）。
 type UploadFilesDto struct {
-	ChannelId                   string
-	UploadToken                 string
-	CertPhotoAFiles             []*UploadFile // 身份证人像面
-	CertPhotoBFiles             []*UploadFile // 身份证国徽面
-	LicensePhotoFiles           []*UploadFile // 营业执照
-	PrgPhotoFiles               []*UploadFile // 组织机构代码证
-	IndustryLicensePhotoFiles   []*UploadFile // 开户许可证
-	ShopPhotoFiles              []*UploadFile // 门头照
-	OtherPhotoFiles             []*UploadFile // 其他资料
-	CertPhotoCFiles             []*UploadFile // 手持身份证
-	RegisterProtocolPhotoFiles  []*UploadFile // 商户入驻协议
-	ContractPhotoFiles          []*UploadFile // 租赁协议
-	ShopEntrancePhotoFiles      []*UploadFile // 门店内景
-	CheckstandPhotoFiles        []*UploadFile // 收银台
-	MerchantAgreementPhotoFiles []*UploadFile // 商户协议
+	ChannelId   string
+	UploadToken string
+	files       map[string][]*UploadFile
 }
 
 // NewUploadFilesDto 创建上传资质文件请求体。
 func NewUploadFilesDto(uploadToken string) *UploadFilesDto {
-	return &UploadFilesDto{UploadToken: uploadToken}
+	return &UploadFilesDto{
+		UploadToken: uploadToken,
+		files:       make(map[string][]*UploadFile),
+	}
 }
 
-// SetCertPhotoAFiles 设置身份证人像面文件列表。
-func (x *UploadFilesDto) SetCertPhotoAFiles(i ...*UploadFile) *UploadFilesDto {
-	x.CertPhotoAFiles = i
+// SetFiles 按 fileManifest 字段名设置该资质的文件列表（同字段重复调用为覆盖）。
+// field 须为 fileManifest 字段名之一（certPhotoAFiles、licensePhotoFiles 等），
+// files 按上传顺序排列；UploadFiles 会对非法字段名返回错误。
+func (x *UploadFilesDto) SetFiles(field string, files ...*UploadFile) *UploadFilesDto {
+	x.files[field] = files
 	return x
 }
 
-// SetCertPhotoBFiles 设置身份证国徽面文件列表。
-func (x *UploadFilesDto) SetCertPhotoBFiles(i ...*UploadFile) *UploadFilesDto {
-	x.CertPhotoBFiles = i
-	return x
+// validateFields 校验已设置的字段名全部合法，防止拼写错误导致文件被静默丢弃。
+func (x *UploadFilesDto) validateFields() error {
+	valid := make(map[string]struct{}, len(uploadFileFields))
+	for _, name := range uploadFileFields {
+		valid[name] = struct{}{}
+	}
+	for name := range x.files {
+		if _, ok := valid[name]; !ok {
+			return fmt.Errorf(`未知上传字段名 %q，须为 fileManifest 字段之一`, name)
+		}
+	}
+	return nil
 }
 
-// SetLicensePhotoFiles 设置营业执照文件列表。
-func (x *UploadFilesDto) SetLicensePhotoFiles(i ...*UploadFile) *UploadFilesDto {
-	x.LicensePhotoFiles = i
-	return x
-}
-
-// SetPrgPhotoFiles 设置组织机构代码证文件列表。
-func (x *UploadFilesDto) SetPrgPhotoFiles(i ...*UploadFile) *UploadFilesDto {
-	x.PrgPhotoFiles = i
-	return x
-}
-
-// SetIndustryLicensePhotoFiles 设置开户许可证文件列表。
-func (x *UploadFilesDto) SetIndustryLicensePhotoFiles(i ...*UploadFile) *UploadFilesDto {
-	x.IndustryLicensePhotoFiles = i
-	return x
-}
-
-// SetShopPhotoFiles 设置门头照文件列表。
-func (x *UploadFilesDto) SetShopPhotoFiles(i ...*UploadFile) *UploadFilesDto {
-	x.ShopPhotoFiles = i
-	return x
-}
-
-// SetOtherPhotoFiles 设置其他资料文件列表。
-func (x *UploadFilesDto) SetOtherPhotoFiles(i ...*UploadFile) *UploadFilesDto {
-	x.OtherPhotoFiles = i
-	return x
-}
-
-// SetCertPhotoCFiles 设置手持身份证文件列表。
-func (x *UploadFilesDto) SetCertPhotoCFiles(i ...*UploadFile) *UploadFilesDto {
-	x.CertPhotoCFiles = i
-	return x
-}
-
-// SetRegisterProtocolPhotoFiles 设置商户入驻协议文件列表。
-func (x *UploadFilesDto) SetRegisterProtocolPhotoFiles(i ...*UploadFile) *UploadFilesDto {
-	x.RegisterProtocolPhotoFiles = i
-	return x
-}
-
-// SetContractPhotoFiles 设置租赁协议文件列表。
-func (x *UploadFilesDto) SetContractPhotoFiles(i ...*UploadFile) *UploadFilesDto {
-	x.ContractPhotoFiles = i
-	return x
-}
-
-// SetShopEntrancePhotoFiles 设置门店内景文件列表。
-func (x *UploadFilesDto) SetShopEntrancePhotoFiles(i ...*UploadFile) *UploadFilesDto {
-	x.ShopEntrancePhotoFiles = i
-	return x
-}
-
-// SetCheckstandPhotoFiles 设置收银台文件列表。
-func (x *UploadFilesDto) SetCheckstandPhotoFiles(i ...*UploadFile) *UploadFilesDto {
-	x.CheckstandPhotoFiles = i
-	return x
-}
-
-// SetMerchantAgreementPhotoFiles 设置商户协议文件列表。
-func (x *UploadFilesDto) SetMerchantAgreementPhotoFiles(i ...*UploadFile) *UploadFilesDto {
-	x.MerchantAgreementPhotoFiles = i
-	return x
-}
-
-// multipartFields 按 fileManifest 顺序生成 multipart 文件字段列表。
+// multipartFields 按 fileManifest 字段顺序生成 multipart 文件字段列表。
 // 同一字段多个文件按 slice 顺序生成多个 MultipartField（Name 相同）。
 // channelId 与 uploadToken 由 UploadFiles 方法用 SetFormData 设置。
 func (x *UploadFilesDto) multipartFields() []*resty.MultipartField {
 	var fields []*resty.MultipartField
-	fileGroups := []struct {
-		name  string
-		files []*UploadFile
-	}{
-		{"certPhotoAFiles", x.CertPhotoAFiles},
-		{"certPhotoBFiles", x.CertPhotoBFiles},
-		{"licensePhotoFiles", x.LicensePhotoFiles},
-		{"prgPhotoFiles", x.PrgPhotoFiles},
-		{"industryLicensePhotoFiles", x.IndustryLicensePhotoFiles},
-		{"shopPhotoFiles", x.ShopPhotoFiles},
-		{"otherPhotoFiles", x.OtherPhotoFiles},
-		{"certPhotoCFiles", x.CertPhotoCFiles},
-		{"registerProtocolPhotoFiles", x.RegisterProtocolPhotoFiles},
-		{"contractPhotoFiles", x.ContractPhotoFiles},
-		{"shopEntrancePhotoFiles", x.ShopEntrancePhotoFiles},
-		{"checkstandPhotoFiles", x.CheckstandPhotoFiles},
-		{"merchantAgreementPhotoFiles", x.MerchantAgreementPhotoFiles},
-	}
-	for _, g := range fileGroups {
-		for _, f := range g.files {
+	for _, name := range uploadFileFields {
+		for _, f := range x.files[name] {
 			if f == nil {
 				continue
 			}
-			fields = append(fields, f.field(g.name))
+			fields = append(fields, f.field(name))
 		}
 	}
 	return fields
@@ -274,6 +209,9 @@ type UploadFilesRespData struct {
 // 与标准 JSON 加密流程相互独立，响应为普通 JSON（非加密信封）。
 // uploadToken 为一次性凭证，无论本次上传成功与否都会被消费；上传失败需从 Step 1 重新开始。
 func (x *Hst) UploadFiles(ctx context.Context, dto *UploadFilesDto) (bizData *UploadFilesBizData, err error) {
+	if err = dto.validateFields(); err != nil {
+		return
+	}
 	dto.ChannelId = x.Option.ChannelId
 
 	// channel-multi-file 前缀，拼接完整 URL

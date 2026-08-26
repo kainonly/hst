@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/kainonly/hst"
@@ -25,8 +26,8 @@ func TestCreatePrepare(t *testing.T) {
 	// fileManifest：对 files 目录下的真实资质图片计算 SM3 哈希
 	const filesDir = "files"
 	certPhotoAHash := sm3HashFile(t, filepath.Join(filesDir, "sfz-a.jpg"))
-	//certPhotoBHash := sm3HashFile(t, filepath.Join(filesDir, "sfz-b.jpg"))
-	//licensePhotoHash := sm3HashFile(t, filepath.Join(filesDir, "yyzz.jpg"))
+	certPhotoBHash := sm3HashFile(t, filepath.Join(filesDir, "sfz-b.jpg"))
+	licensePhotoHash := sm3HashFile(t, filepath.Join(filesDir, "yyzz.jpg"))
 
 	dto := hst.NewCreatePrepareDto(
 		cfg.PersonUsername,
@@ -45,17 +46,16 @@ func TestCreatePrepare(t *testing.T) {
 			"中国农业银行海口秀英支行", "460000", "460100",
 		).
 		SetContactLine("310100000000"). // 联行号（非必填）
-		SetCardHolder("01", cfg.PersonCertNo, "海南省海口市秀英区XX路XX号")
-
-	//SetLogonId(cfg.PersonMybankAccount). // logonId（网商二类户）
-	//SetUserId(cfg.PersonUid).
-	//SetFileManifest(&hst.FileManifest{
-	//	CertPhotoAFiles:   []string{certPhotoAHash},   // 身份证人像面
-	//	CertPhotoBFiles:   []string{certPhotoBHash},   // 身份证国徽面
-	//	LicensePhotoFiles: []string{licensePhotoHash}, // 营业执照
-	//}).
-	//SetAlipayAccount(cfg.PersonMybankAccount). // 支付宝收款账号（网商二类户）
-	//SetMerchantType("OTHER") // 商户业务类型：其他
+		SetCardHolder("01", cfg.PersonCertNo, "海南省海口市秀英区XX路XX号").
+		SetFileManifest(&hst.FileManifest{
+			CertPhotoAFiles:   []string{certPhotoAHash},   // 身份证人像面
+			CertPhotoBFiles:   []string{certPhotoBHash},   // 身份证国徽面
+			LicensePhotoFiles: []string{licensePhotoHash}, // 营业执照
+		}).
+		SetLogonId(cfg.PersonMybankAccount). // logonId（网商二类户）
+		SetUserId(cfg.PersonUid).
+		SetAlipayAccount(cfg.PersonMybankAccount). // 支付宝收款账号（网商二类户）
+		SetMerchantType("OTHER")                   // 商户业务类型：其他
 
 	result, err := client.CreatePrepare(ctx, dto)
 	if err != nil {

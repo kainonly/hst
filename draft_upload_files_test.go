@@ -52,17 +52,7 @@ func TestUploadFiles(t *testing.T) {
 			t.Logf("本地文件 %s 不存在，跳过字段 %s", filePath, fieldName)
 			continue
 		}
-		file := hst.NewUploadFile(filepath.Base(filePath), fileBytes)
-		switch fieldName {
-		case "certPhotoAFiles":
-			dto.SetCertPhotoAFiles(file)
-		case "certPhotoBFiles":
-			dto.SetCertPhotoBFiles(file)
-		case "licensePhotoFiles":
-			dto.SetLicensePhotoFiles(file)
-		case "shopPhotoFiles":
-			dto.SetShopPhotoFiles(file)
-		}
+		dto.SetFiles(fieldName, hst.NewUploadFile(filepath.Base(filePath), fileBytes))
 	}
 
 	result, err := client.UploadFiles(ctx, dto)

@@ -262,19 +262,21 @@ result, err := client.CreatePrepare(ctx, dto)
 
 两步上传 **Step 2**。以 `multipart/form-data` 携带凭证与文件上传，服务端按字段名 + 顺序重算 SM3 比对。
 
-文件通过 `hst.NewUploadFile(name, data)` 构造：文件名 + 内容字节。典型场景是业务方在自己的接口中已收到用户上传的文件（`[]byte`），Step 1 用同一份字节计算 SM3 哈希提交 `FileManifest`，Step 2 直接透传该字节，全程无需落盘：
+文件通过 `hst.NewUploadFile(name, data)` 构造（文件名 + 内容字节），再按 `FileManifest` 字段名经 `SetFiles` 挂载。典型场景是业务方在自己的接口中已收到用户上传的文件（`[]byte`），Step 1 用同一份字节计算 SM3 哈希提交 `FileManifest`，Step 2 直接透传该字节，全程无需落盘：
 
 ```go
 dataA, _ := os.ReadFile("files/sfz-a.jpg") // 实际场景为接口收到的上传内容
 dto := hst.NewUploadFilesDto("<upload_token>"). // uploadToken 来自 CreatePrepare/UpdatePrepare
-    SetCertPhotoAFiles(hst.NewUploadFile("sfz-a.jpg", dataA)).  // 身份证人像面
-    SetCertPhotoBFiles(hst.NewUploadFile("sfz-b.jpg", dataB)).  // 身份证国徽面
-    SetLicensePhotoFiles(hst.NewUploadFile("yyzz.jpg", dataC))  // 营业执照
+    SetFiles("certPhotoAFiles", hst.NewUploadFile("sfz-a.jpg", dataA)). // 身份证人像面
+    SetFiles("certPhotoBFiles", hst.NewUploadFile("sfz-b.jpg", dataB)). // 身份证国徽面
+    SetFiles("licensePhotoFiles", hst.NewUploadFile("yyzz.jpg", dataC)) // 营业执照
 
 bizData, err := client.UploadFiles(ctx, dto)
 // bizData.DraftId     — 草稿 ID
 // bizData.DraftStatus — 草稿状态 EDITING/SUBMITTING/CONFIRMED/FAILED
 ```
+
+`SetFiles` 的字段名即 `FileManifest` 的 JSON 字段名（`certPhotoAFiles`、`licensePhotoFiles` 等，见上文 fileManifest 字段名清单）；非法字段名 `UploadFiles` 会直接返回错误，不会静默丢文件。
 
 Hertz 接口中直接转发（不落盘）：
 
@@ -285,8 +287,8 @@ func uploadHandler(ctx app.RequestContext, client *hst.Hst) {
     defer f.Close()
     data, _ := io.ReadAll(f)
     // data 在 Step 1 已计算 SM3 哈希，此处直接透传
-    file := hst.NewUploadFile(fh.Filename, data)
-    dto := hst.NewUploadFilesDto(token).SetCertPhotoAFiles(file)
+    dto := hst.NewUploadFilesDto(token).
+        SetFiles("certPhotoAFiles", hst.NewUploadFile(fh.Filename, data))
     bizData, err := client.UploadFiles(ctx, dto)
     _ = bizData
 }
@@ -591,6 +593,7 @@ func NewTradeQueryDto(merchantNo, outWithdrawNo string) *TradeQueryDto
 
 // 上传文件源（仅 UploadFiles 使用）
 func NewUploadFile(name string, data []byte) *UploadFile // 文件名 + 内容字节（与 Step 1 SM3 哈希的字节一致）
+func (x *UploadFilesDto) SetFiles(field string, files ...*UploadFile) *UploadFilesDto // 按 FileManifest 字段名挂载文件
 ```
 
 ### 响应 BizData 关键字段
