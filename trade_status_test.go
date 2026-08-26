@@ -16,7 +16,7 @@ func TestTradeStatus(t *testing.T) {
 	t.Logf("从 trade_import 日志读取到 busId: %s", busId)
 
 	dto := hst.NewTradeStatusDto(busId)
-	result, err := client.TradeStatus(ctx, dto)
+	result, _, err := client.TradeStatus(ctx, dto)
 	if err != nil {
 		logResult(t, "trade_status", errorLogData{false, err.Error()})
 		t.Fatalf("TradeStatus 失败: %v", err)
@@ -33,7 +33,7 @@ func TestTradeStatus2(t *testing.T) {
 	t.Logf("从 trade_import_2 日志读取到 busId: %s", busId)
 
 	dto := hst.NewTradeStatusDto(busId)
-	result, err := client.TradeStatus(ctx, dto)
+	result, _, err := client.TradeStatus(ctx, dto)
 	if err != nil {
 		logResult(t, "trade_status_2", errorLogData{false, err.Error()})
 		t.Fatalf("TradeStatus2 失败: %v", err)

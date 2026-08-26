@@ -21,7 +21,7 @@ func TestApply(t *testing.T) {
 		"1.00",               // totalAmount（单位元，精确到分）
 	).SetRemark("测试提现")
 
-	result, err := client.Apply(ctx, dto)
+	result, _, err := client.Apply(ctx, dto)
 	if err != nil {
 		logResult(t, "withdrawal_apply", errorLogData{false, err.Error()})
 		return

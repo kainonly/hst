@@ -37,7 +37,7 @@ type GetUploadTokenBizData struct {
 // GetUploadToken 申请文件上传凭证（分账文件上传 Step 1）。
 // 客户端预先计算文件 SM3 哈希并纳入签名体，服务端生成一次性 uploadToken（默认有效期 5 分钟）。
 // uploadToken 一次性消费，无论上传成功与否都会失效；过期或失败需重新申请。
-func (x *Hst) GetUploadToken(ctx context.Context, dto *GetUploadTokenDto) (result *SignObjectRespResult[*GetUploadTokenBizData], err error) {
+func (x *Hst) GetUploadToken(ctx context.Context, dto *GetUploadTokenDto) (result *SignObjectRespResult[*GetUploadTokenBizData], signObjectResp *SignObjectResp, err error) {
 	dto.PartnerId = x.Option.ChannelId
 	dto.MerchantId = x.Option.MerchantNo
 
@@ -46,12 +46,11 @@ func (x *Hst) GetUploadToken(ctx context.Context, dto *GetUploadTokenDto) (resul
 		return
 	}
 
-	var b string
-	if b, err = x.Request(ctx,
+	if signObjectResp, err = x.Request(ctx,
 		"/channel/doc-trade-file/getUploadToken", signObjectReq); err != nil {
 		return
 	}
-	if err = sonic.UnmarshalString(b, &result); err != nil {
+	if err = sonic.UnmarshalString(signObjectResp.Body, &result); err != nil {
 		return
 	}
 	if !result.BizSuccess {

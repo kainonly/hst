@@ -31,7 +31,7 @@ func NewTradeConfirmDto(busId string) *TradeConfirmDto {
 // 确认已上传的文档交易批次并触发补单分账，需在文件解析完成后调用。
 // 文件仍在解析中（docStatus = IMPORTING 或明细数未就绪）时不允许确认。
 // 响应 bizData 为布尔值，true 表示确认成功。
-func (x *Hst) TradeConfirm(ctx context.Context, dto *TradeConfirmDto) (result *SignObjectRespResult[bool], err error) {
+func (x *Hst) TradeConfirm(ctx context.Context, dto *TradeConfirmDto) (result *SignObjectRespResult[bool], signObjectResp *SignObjectResp, err error) {
 	dto.PartnerId = x.Option.ChannelId
 	dto.MerchantId = x.Option.MerchantNo
 
@@ -40,12 +40,11 @@ func (x *Hst) TradeConfirm(ctx context.Context, dto *TradeConfirmDto) (result *S
 		return
 	}
 
-	var b string
-	if b, err = x.Request(ctx,
+	if signObjectResp, err = x.Request(ctx,
 		"/channel/doc-trade-file/confirm", signObjectReq); err != nil {
 		return
 	}
-	if err = sonic.UnmarshalString(b, &result); err != nil {
+	if err = sonic.UnmarshalString(signObjectResp.Body, &result); err != nil {
 		return
 	}
 	if !result.BizSuccess {

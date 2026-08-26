@@ -299,7 +299,7 @@ type UpdatePrepareBizData struct {
 //   - 仅 EDITING（编辑中）或 FAILED（提交失败）状态的草稿可更新
 //   - 业务字段须整体重新提交（非增量更新），必填规则与 CreatePrepare 相同
 //   - fileManifest 非必填，仅需包含有新文件的字段；未提供的字段草稿保留原有文件
-func (x *Hst) UpdatePrepare(ctx context.Context, dto *UpdatePrepareDto) (result *SignObjectRespResult[*UpdatePrepareBizData], err error) {
+func (x *Hst) UpdatePrepare(ctx context.Context, dto *UpdatePrepareDto) (result *SignObjectRespResult[*UpdatePrepareBizData], signObjectResp *SignObjectResp, err error) {
 	dto.ChannelNo = x.Option.ChannelId
 
 	var signObjectReq *SignObjectReq
@@ -307,12 +307,11 @@ func (x *Hst) UpdatePrepare(ctx context.Context, dto *UpdatePrepareDto) (result 
 		return
 	}
 
-	var b string
-	if b, err = x.Request(ctx,
+	if signObjectResp, err = x.Request(ctx,
 		"/channel/merchant_info_draft/update/prepare", signObjectReq); err != nil {
 		return
 	}
-	if err = sonic.UnmarshalString(b, &result); err != nil {
+	if err = sonic.UnmarshalString(signObjectResp.Body, &result); err != nil {
 		return
 	}
 	if !result.BizSuccess {

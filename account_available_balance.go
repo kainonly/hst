@@ -55,7 +55,7 @@ type AvailableBalanceBizData struct {
 //
 // 注意：PENDING_BALANCE 是尚未解冻的待结算金额，不可提现。
 // 把 AVAILABLE_BALANCE 与 PENDING_BALANCE 相加当作可提现额度会导致提现申请以余额不足失败。
-func (x *Hst) AvailableBalance(ctx context.Context, dto *AvailableBalanceDto) (result *SignObjectRespResult[*AvailableBalanceBizData], err error) {
+func (x *Hst) AvailableBalance(ctx context.Context, dto *AvailableBalanceDto) (result *SignObjectRespResult[*AvailableBalanceBizData], signObjectResp *SignObjectResp, err error) {
 	dto.PartnerId = x.Option.ChannelId
 
 	var signObjectReq *SignObjectReq
@@ -63,12 +63,11 @@ func (x *Hst) AvailableBalance(ctx context.Context, dto *AvailableBalanceDto) (r
 		return
 	}
 
-	var b string
-	if b, err = x.Request(ctx,
+	if signObjectResp, err = x.Request(ctx,
 		"/channel/merchant_account/available_balance", signObjectReq); err != nil {
 		return
 	}
-	if err = sonic.UnmarshalString(b, &result); err != nil {
+	if err = sonic.UnmarshalString(signObjectResp.Body, &result); err != nil {
 		return
 	}
 	if !result.BizSuccess {

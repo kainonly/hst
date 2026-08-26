@@ -16,7 +16,7 @@ func TestTradeConfirm(t *testing.T) {
 	t.Logf("从 trade_import 日志读取到 busId: %s", busId)
 
 	dto := hst.NewTradeConfirmDto(busId)
-	result, err := client.TradeConfirm(ctx, dto)
+	result, _, err := client.TradeConfirm(ctx, dto)
 	if err != nil {
 		logResult(t, "trade_confirm", errorLogData{false, err.Error()})
 		t.Fatalf("TradeConfirm 失败: %v", err)

@@ -11,7 +11,7 @@ func TestAvailableBalance(t *testing.T) {
 	ctx := context.Background()
 
 	dto := hst.NewAvailableBalanceDto(cfg.MerchantNo)
-	result, err := client.AvailableBalance(ctx, dto)
+	result, _, err := client.AvailableBalance(ctx, dto)
 	if err != nil {
 		logResult(t, "account_available_balance", errorLogData{false, err.Error()})
 		t.Fatalf("AvailableBalance 失败: %v", err)
@@ -25,7 +25,7 @@ func TestAvailableBalanceSub(t *testing.T) {
 
 	sub := cfg.SubMerchantNo[0]
 	dto := hst.NewAvailableBalanceDto(sub)
-	result, err := client.AvailableBalance(ctx, dto)
+	result, _, err := client.AvailableBalance(ctx, dto)
 	if err != nil {
 		logResult(t, "account_available_balance", errorLogData{false, err.Error()})
 		t.Fatalf("AvailableBalance 失败: %v", err)

@@ -285,7 +285,7 @@ type CreatePrepareBizData struct {
 	ExpireSeconds int64  `json:"expireSeconds"`
 }
 
-func (x *Hst) CreatePrepare(ctx context.Context, dto *CreatePrepareDto) (result *SignObjectRespResult[*CreatePrepareBizData], err error) {
+func (x *Hst) CreatePrepare(ctx context.Context, dto *CreatePrepareDto) (result *SignObjectRespResult[*CreatePrepareBizData], signObjectResp *SignObjectResp, err error) {
 	dto.ChannelNo = x.Option.ChannelId
 
 	var signObjectReq *SignObjectReq
@@ -293,12 +293,11 @@ func (x *Hst) CreatePrepare(ctx context.Context, dto *CreatePrepareDto) (result 
 		return
 	}
 
-	var b string
-	if b, err = x.Request(ctx,
+	if signObjectResp, err = x.Request(ctx,
 		"/channel/merchant_info_draft/create/prepare", signObjectReq); err != nil {
 		return
 	}
-	if err = sonic.UnmarshalString(b, &result); err != nil {
+	if err = sonic.UnmarshalString(signObjectResp.Body, &result); err != nil {
 		return
 	}
 	if !result.BizSuccess {

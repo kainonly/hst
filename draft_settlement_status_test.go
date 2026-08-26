@@ -20,7 +20,7 @@ func TestSettlementStatus(t *testing.T) {
 	t.Logf("从 confirm 日志读取到 draftId: %s", confirmResult.DraftId)
 
 	dto := hst.NewSettlementStatusDto(confirmResult.DraftId)
-	result, err := client.SettlementStatus(ctx, dto)
+	result, _, err := client.SettlementStatus(ctx, dto)
 	if err != nil {
 		logResult(t, "settlement_status", errorLogData{false, err.Error()})
 		t.Fatalf("SettlementStatus 失败: %v", err)

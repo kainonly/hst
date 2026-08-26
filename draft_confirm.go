@@ -43,7 +43,7 @@ type ConfirmBizData struct {
 // 将两步上传完成后的草稿数据分发写入商户基础信息、商户信息、结算账户三个正式业务表，
 // 触发商户入驻申请。确认后草稿状态变更为 CONFIRMED 或 FAILED；
 // 若为 FAILED，可通过 UpdatePrepare 修改后重新走两步上传流程再次确认。
-func (x *Hst) Confirm(ctx context.Context, dto *ConfirmDto) (result *SignObjectRespResult[*ConfirmBizData], err error) {
+func (x *Hst) Confirm(ctx context.Context, dto *ConfirmDto) (result *SignObjectRespResult[*ConfirmBizData], signObjectResp *SignObjectResp, err error) {
 	dto.ChannelNo = x.Option.ChannelId
 
 	var signObjectReq *SignObjectReq
@@ -51,12 +51,11 @@ func (x *Hst) Confirm(ctx context.Context, dto *ConfirmDto) (result *SignObjectR
 		return
 	}
 
-	var b string
-	if b, err = x.Request(ctx,
+	if signObjectResp, err = x.Request(ctx,
 		"/channel/merchant_info_draft/confirm", signObjectReq); err != nil {
 		return
 	}
-	if err = sonic.UnmarshalString(b, &result); err != nil {
+	if err = sonic.UnmarshalString(signObjectResp.Body, &result); err != nil {
 		return
 	}
 	if !result.BizSuccess {

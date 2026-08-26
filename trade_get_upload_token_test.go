@@ -24,7 +24,7 @@ func TestGetUploadToken(t *testing.T) {
 		"trade.xlsx",
 		fileSM3Hash,
 	)
-	result, err := client.GetUploadToken(ctx, dto)
+	result, _, err := client.GetUploadToken(ctx, dto)
 	if err != nil {
 		logResult(t, "get_upload_token", errorLogData{false, err.Error()})
 		t.Fatalf("GetUploadToken 失败: %v", err)
@@ -42,7 +42,7 @@ func TestGetUploadToken2(t *testing.T) {
 		"trade-2.xlsx",
 		fileSM3Hash,
 	)
-	result, err := client.GetUploadToken(ctx, dto)
+	result, _, err := client.GetUploadToken(ctx, dto)
 	if err != nil {
 		logResult(t, "get_upload_token_2", errorLogData{false, err.Error()})
 		t.Fatalf("GetUploadToken2 失败: %v", err)

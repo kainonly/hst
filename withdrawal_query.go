@@ -53,7 +53,7 @@ type TradeQueryBizData struct {
 //   - 只有 SUCCESS 才代表资金已到卡
 //   - DEALING / WAIT_CONFIRM 都是中间态，须继续轮询
 //   - UNKNOWN 须联系平台核实，不能自行判为失败
-func (x *Hst) TradeQuery(ctx context.Context, dto *TradeQueryDto) (result *SignObjectRespResult[*TradeQueryBizData], err error) {
+func (x *Hst) TradeQuery(ctx context.Context, dto *TradeQueryDto) (result *SignObjectRespResult[*TradeQueryBizData], signObjectResp *SignObjectResp, err error) {
 	dto.PartnerId = x.Option.ChannelId
 
 	var signObjectReq *SignObjectReq
@@ -61,12 +61,11 @@ func (x *Hst) TradeQuery(ctx context.Context, dto *TradeQueryDto) (result *SignO
 		return
 	}
 
-	var b string
-	if b, err = x.Request(ctx,
+	if signObjectResp, err = x.Request(ctx,
 		"/channel/merchant/withdrawal/query", signObjectReq); err != nil {
 		return
 	}
-	if err = sonic.UnmarshalString(b, &result); err != nil {
+	if err = sonic.UnmarshalString(signObjectResp.Body, &result); err != nil {
 		return
 	}
 	if !result.BizSuccess {

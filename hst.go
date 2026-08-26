@@ -124,43 +124,7 @@ type SignObjectResp struct {
 	Body         string `json:"body"`         // SM4 加密后的业务 JSON（Base64）
 }
 
-// signObjectRespHolder 挂载在 ctx 上的信封容器。
-// ctx 本身不可变，SDK 通过写 holder.resp 字段实现"ctx 直接设置 resp"。
-type signObjectRespHolder struct {
-	resp *SignObjectResp
-}
-
-// signObjectRespKey ctx 中挂载信封容器的 key。
-type signObjectRespKey struct{}
-
-// WithSignObjectResp 在 ctx 上挂载信封容器。
-// 用返回的 ctx 发起加密信封请求（进件/分账/余额/提现），
-// SDK 会把最近一次 SignObjectResp 写入容器（含失败请求），
-// 随后经 SignObjectRespFromContext 读取。
-//
-// 用法：
-//
-//	ctx = hst.WithSignObjectResp(ctx)
-//	result, err := client.CreatePrepare(ctx, dto)
-//	resp := hst.SignObjectRespFromContext(ctx)
-//
-// 注意：不要把同一挂载 ctx 共享给多个 goroutine 并发请求，
-// 容器只保留最后一次写入；并发场景各 goroutine 各自挂载。
-func WithSignObjectResp(ctx context.Context) context.Context {
-	return context.WithValue(ctx, signObjectRespKey{}, &signObjectRespHolder{})
-}
-
-// SignObjectRespFromContext 从 ctx 获取最近一次请求的网关响应信封。
-// ctx 未挂载容器或尚无请求完成时返回 nil。
-// 若解密成功，resp.Body 为业务明文 JSON。
-func SignObjectRespFromContext(ctx context.Context) *SignObjectResp {
-	if h, ok := ctx.Value(signObjectRespKey{}).(*signObjectRespHolder); ok {
-		return h.resp
-	}
-	return nil
-}
-
-func (x *Hst) Request(ctx context.Context, path string, signObjectReq *SignObjectReq) (_ string, err error) {
+func (x *Hst) Request(ctx context.Context, path string, signObjectReq *SignObjectReq) (signObjectResp *SignObjectResp, err error) {
 	var resp *resty.Response
 	if resp, err = x.Client.R().SetContext(ctx).
 		SetBody(signObjectReq).
@@ -168,14 +132,8 @@ func (x *Hst) Request(ctx context.Context, path string, signObjectReq *SignObjec
 		return
 	}
 
-	var signObjectResp *SignObjectResp
 	if err = sonic.Unmarshal(resp.Bytes(), &signObjectResp); err != nil {
 		return
-	}
-
-	// 写入调用方挂载的信封容器（若有）；网络错误/解析失败路径不会到达此处
-	if h, ok := ctx.Value(signObjectRespKey{}).(*signObjectRespHolder); ok {
-		h.resp = signObjectResp
 	}
 
 	if resp.StatusCode() != 200 {
@@ -192,7 +150,7 @@ func (x *Hst) Request(ctx context.Context, path string, signObjectReq *SignObjec
 		return
 	}
 
-	return signObjectResp.Body, nil
+	return
 }
 
 func (x *Hst) decryptAndVerify(signObjectResp *SignObjectResp) (err error) {

@@ -19,7 +19,7 @@ func TestConfirm(t *testing.T) {
 	t.Logf("从 upload_files 日志读取到 draftId: %s", uploadFilesResult.DraftId)
 
 	dto := hst.NewConfirmDto(uploadFilesResult.DraftId)
-	result, err := client.Confirm(ctx, dto)
+	result, _, err := client.Confirm(ctx, dto)
 	if err != nil {
 		logResult(t, "confirm", errorLogData{false, err.Error()})
 		t.Fatalf("Confirm 失败: %v", err)

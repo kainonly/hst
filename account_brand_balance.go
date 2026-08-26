@@ -39,7 +39,7 @@ func NewBrandBalanceDto(merchantNo string) *BrandBalanceDto {
 //     收到成功响应就意味着这是一个真实余额，不必再判空。
 //
 // 响应 bizData 为裸字符串（品牌商户订单管理专户余额，单位元）。
-func (x *Hst) BrandBalance(ctx context.Context, dto *BrandBalanceDto) (result *SignObjectRespResult[string], err error) {
+func (x *Hst) BrandBalance(ctx context.Context, dto *BrandBalanceDto) (result *SignObjectRespResult[string], signObjectResp *SignObjectResp, err error) {
 	dto.PartnerId = x.Option.ChannelId
 
 	var signObjectReq *SignObjectReq
@@ -47,12 +47,11 @@ func (x *Hst) BrandBalance(ctx context.Context, dto *BrandBalanceDto) (result *S
 		return
 	}
 
-	var b string
-	if b, err = x.Request(ctx,
+	if signObjectResp, err = x.Request(ctx,
 		"/channel/merchant_account/brand-balance", signObjectReq); err != nil {
 		return
 	}
-	if err = sonic.UnmarshalString(b, &result); err != nil {
+	if err = sonic.UnmarshalString(signObjectResp.Body, &result); err != nil {
 		return
 	}
 	if !result.BizSuccess {

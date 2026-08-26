@@ -37,7 +37,7 @@ type SettlementStatusBizData struct {
 	ActivateUrl          string `json:"activateUrl"`          // 激活链接（settlementStatus = 3 待激活时使用）
 }
 
-func (x *Hst) SettlementStatus(ctx context.Context, dto *SettlementStatusDto) (result *SignObjectRespResult[*SettlementStatusBizData], err error) {
+func (x *Hst) SettlementStatus(ctx context.Context, dto *SettlementStatusDto) (result *SignObjectRespResult[*SettlementStatusBizData], signObjectResp *SignObjectResp, err error) {
 	dto.ChannelNo = x.Option.ChannelId
 
 	var signObjectReq *SignObjectReq
@@ -45,13 +45,12 @@ func (x *Hst) SettlementStatus(ctx context.Context, dto *SettlementStatusDto) (r
 		return
 	}
 
-	var b string
-	if b, err = x.Request(ctx,
+	if signObjectResp, err = x.Request(ctx,
 		"/channel/merchant_info_draft/settlement_status", signObjectReq); err != nil {
 		return
 	}
 
-	if err = sonic.UnmarshalString(b, &result); err != nil {
+	if err = sonic.UnmarshalString(signObjectResp.Body, &result); err != nil {
 		return
 	}
 	if !result.BizSuccess {

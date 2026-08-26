@@ -17,7 +17,7 @@ func TestTradeQuery(t *testing.T) {
 		`W20260813161712`, // outWithdrawNo
 	)
 
-	result, err := client.TradeQuery(ctx, dto)
+	result, _, err := client.TradeQuery(ctx, dto)
 	if err != nil {
 		logResult(t, "withdrawal_query", errorLogData{false, err.Error()})
 		return

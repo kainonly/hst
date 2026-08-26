@@ -11,7 +11,7 @@ func TestBrandBalance(t *testing.T) {
 	ctx := context.Background()
 
 	dto := hst.NewBrandBalanceDto(cfg.MerchantNo)
-	result, err := client.BrandBalance(ctx, dto)
+	result, _, err := client.BrandBalance(ctx, dto)
 	if err != nil {
 		logResult(t, "account_brand_balance", errorLogData{false, err.Error()})
 		t.Fatalf("BrandBalance 失败: %v", err)
@@ -25,7 +25,7 @@ func TestBrandBalanceSub(t *testing.T) {
 
 	sub := cfg.SubMerchantNo[0]
 	dto := hst.NewBrandBalanceDto(sub)
-	result, err := client.BrandBalance(ctx, dto)
+	result, _, err := client.BrandBalance(ctx, dto)
 	if err != nil {
 		logResult(t, "account_brand_balance", errorLogData{false, err.Error()})
 		t.Fatalf("BrandBalance 失败: %v", err)

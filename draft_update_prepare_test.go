@@ -53,7 +53,7 @@ func TestUpdatePrepare(t *testing.T) {
 		SetAlipayAccount(cfg.PersonMybankAccount). // 支付宝收款账号（网商二类户）
 		SetMerchantType("OTHER")                   // 商户业务类型：其他
 
-	result, err := client.UpdatePrepare(ctx, dto)
+	result, _, err := client.UpdatePrepare(ctx, dto)
 	if err != nil {
 		logResult(t, "update_prepare", errorLogData{false, err.Error()})
 		t.Fatalf("UpdatePrepare 失败: %v", err)

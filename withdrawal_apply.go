@@ -66,7 +66,7 @@ type ApplyBizData struct {
 //   - 调用超时、连接中断时资金可能已在出账。此时须用原 outWithdrawNo 调用查询提现订单查明结果；
 //     换一个单号重发等于再提现一笔。
 //   - outWithdrawNo 是幂等键，重复调用返回首次结果。
-func (x *Hst) Apply(ctx context.Context, dto *ApplyDto) (result *SignObjectRespResult[*ApplyBizData], err error) {
+func (x *Hst) Apply(ctx context.Context, dto *ApplyDto) (result *SignObjectRespResult[*ApplyBizData], signObjectResp *SignObjectResp, err error) {
 	dto.PartnerId = x.Option.ChannelId
 
 	var signObjectReq *SignObjectReq
@@ -74,12 +74,11 @@ func (x *Hst) Apply(ctx context.Context, dto *ApplyDto) (result *SignObjectRespR
 		return
 	}
 
-	var b string
-	if b, err = x.Request(ctx,
+	if signObjectResp, err = x.Request(ctx,
 		"/channel/merchant/withdrawal/apply", signObjectReq); err != nil {
 		return
 	}
-	if err = sonic.UnmarshalString(b, &result); err != nil {
+	if err = sonic.UnmarshalString(signObjectResp.Body, &result); err != nil {
 		return
 	}
 	if !result.BizSuccess {

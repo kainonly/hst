@@ -54,7 +54,7 @@ type TradeStatusBizData struct {
 //   - 已取消（CANCELLED）的明细不计入以上任何一项，因此三项之和不一定等于导入文件的总金额。
 //   - 确认补单（/confirm）之前，明细均处于待确认状态，此时 processingAmount 即为本批次的待确认总金额。
 //   - 批次下无明细时返回 "0.00"，不会返回 null。
-func (x *Hst) TradeStatus(ctx context.Context, dto *TradeStatusDto) (result *SignObjectRespResult[*TradeStatusBizData], err error) {
+func (x *Hst) TradeStatus(ctx context.Context, dto *TradeStatusDto) (result *SignObjectRespResult[*TradeStatusBizData], signObjectResp *SignObjectResp, err error) {
 	dto.PartnerId = x.Option.ChannelId
 	dto.MerchantId = x.Option.MerchantNo
 
@@ -63,12 +63,11 @@ func (x *Hst) TradeStatus(ctx context.Context, dto *TradeStatusDto) (result *Sig
 		return
 	}
 
-	var b string
-	if b, err = x.Request(ctx,
+	if signObjectResp, err = x.Request(ctx,
 		"/channel/doc-trade-file/status", signObjectReq); err != nil {
 		return
 	}
-	if err = sonic.UnmarshalString(b, &result); err != nil {
+	if err = sonic.UnmarshalString(signObjectResp.Body, &result); err != nil {
 		return
 	}
 	if !result.BizSuccess {

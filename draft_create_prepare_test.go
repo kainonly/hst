@@ -57,11 +57,13 @@ func TestCreatePrepare(t *testing.T) {
 		SetAlipayAccount(cfg.PersonMybankAccount). // 支付宝收款账号（网商二类户）
 		SetMerchantType("OTHER")                   // 商户业务类型：其他
 
-	result, err := client.CreatePrepare(ctx, dto)
+	result, resp, err := client.CreatePrepare(ctx, dto)
 	if err != nil {
 		logResult(t, "create_prepare", errorLogData{false, err.Error()})
 		t.Fatalf("CreatePrepare 失败: %v", err)
 	}
+
+	t.Log(resp)
 
 	// 写入日志（包含 fileManifest 字段名，供 upload_files 测试读取）
 	logResult(t, "create_prepare", prepareLogData{

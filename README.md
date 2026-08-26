@@ -45,7 +45,7 @@ func main() {
     }
 
     // 进件：创建草稿并申请上传凭证
-    result, err := client.CreatePrepare(context.Background(), hst.NewCreatePrepareDto(
+    result, _, err := client.CreatePrepare(context.Background(), hst.NewCreatePrepareDto(
         "上海某某科技有限公司",  // legalName 法定名称
         "某某科技",             // shortName 商户简称
         []string{"WICOIN_PAY"}, // productCode 产品编码列表
@@ -248,7 +248,7 @@ dto := hst.NewCreatePrepareDto(
         "王五", "100", "310***********1234", "2035-01-01 00:00:00",
     ).SetRemark("备注") // 可选：备注
 
-result, err := client.CreatePrepare(ctx, dto)
+result, _, err := client.CreatePrepare(ctx, dto)
 // result.BizData.UploadToken   — 上传凭证（UUID）
 // result.BizData.ExpireSeconds — 凭证有效期（秒，固定 900）
 ```
@@ -314,7 +314,7 @@ dto := hst.NewUpdatePrepareDto(
     ShopPhotoFiles: []string{"<sm3_hash>"},  // 仅更新门头照
 }).SetMerchantType("OTHER")
 
-result, err := client.UpdatePrepare(ctx, dto)
+result, _, err := client.UpdatePrepare(ctx, dto)
 // result.BizData.UploadToken — 新的上传凭证
 ```
 
@@ -324,7 +324,7 @@ result, err := client.UpdatePrepare(ctx, dto)
 
 ```go
 dto := hst.NewConfirmDto("<draft_id>")
-result, err := client.Confirm(ctx, dto)
+result, _, err := client.Confirm(ctx, dto)
 // result.BizData.DraftStatus — CONFIRMED 或 FAILED
 // result.BizData.MerchantId  — 确认成功后回填
 // result.BizData.OrgId       — 企业唯一号
@@ -335,7 +335,7 @@ result, err := client.Confirm(ctx, dto)
 
 ```go
 dto := hst.NewSettlementStatusDto("<draft_id>")
-result, err := client.SettlementStatus(ctx, dto)
+result, _, err := client.SettlementStatus(ctx, dto)
 // result.BizData.SettlementStatus — 入驻状态码
 // result.BizData.MerchantCreated  — 是否已生成商户号
 // result.BizData.ActivateUrl      — 待激活时的激活链接
@@ -374,7 +374,7 @@ dto := hst.NewGetUploadTokenDto(
     "trade.xlsx", // fileName 文件名（须与 Step 2 上传的文件名一致）
     fileSM3Hash,  // fileSM3Hash 64位十六进制
 )
-result, err := client.GetUploadToken(ctx, dto)
+result, _, err := client.GetUploadToken(ctx, dto)
 // result.BizData.UploadToken   — 上传凭证
 // result.BizData.ExpireSeconds — 有效期（秒，默认 300）
 ```
@@ -402,7 +402,7 @@ busId, err := client.TradeImport(ctx, dto)
 
 ```go
 dto := hst.NewTradeConfirmDto("<bus_id>")
-result, err := client.TradeConfirm(ctx, dto)
+result, _, err := client.TradeConfirm(ctx, dto)
 // result.BizData — bool，true 表示确认成功
 ```
 
@@ -410,7 +410,7 @@ result, err := client.TradeConfirm(ctx, dto)
 
 ```go
 dto := hst.NewTradeStatusDto("<bus_id>")
-result, err := client.TradeStatus(ctx, dto)
+result, _, err := client.TradeStatus(ctx, dto)
 // result.BizData.DocStatus        — IMPORTING/PENDING/SUCCESS/FAILED
 // result.BizData.TotalDetailCount — 明细总数
 // result.BizData.SuccessCount     — 成功数
@@ -426,7 +426,7 @@ result, err := client.TradeStatus(ctx, dto)
 
 ```go
 dto := hst.NewTradeCancelDto("<bus_id>")
-result, err := client.TradeCancel(ctx, dto)
+result, _, err := client.TradeCancel(ctx, dto)
 // result.BizData — bool，true 表示取消成功
 ```
 
@@ -443,7 +443,7 @@ result, err := client.TradeCancel(ctx, dto)
 
 ```go
 dto := hst.NewAvailableBalanceDto("<merchant_no>")
-result, err := client.AvailableBalance(ctx, dto)
+result, _, err := client.AvailableBalance(ctx, dto)
 // result.BizData.BalanceInfos — 余额明细列表
 // 按accountType取值，不要按下标取：
 //   AVAILABLE_BALANCE — 可用余额（可提现）
@@ -456,7 +456,7 @@ result, err := client.AvailableBalance(ctx, dto)
 
 ```go
 dto := hst.NewBrandBalanceDto("<merchant_no>")
-result, err := client.BrandBalance(ctx, dto)
+result, _, err := client.BrandBalance(ctx, dto)
 // result.BizData — 字符串，品牌专户余额（单位元）
 ```
 
@@ -480,7 +480,7 @@ dto := hst.NewApplyDto(
     "100.00",           // totalAmount 提现金额（元）
 ).SetRemark("日常结算提现")
 
-result, err := client.Apply(ctx, dto)
+result, _, err := client.Apply(ctx, dto)
 // result.BizData.WithdrawNo — 平台提现单号
 // result.BizData.Status    — 提现状态
 ```
@@ -494,7 +494,7 @@ dto := hst.NewTradeQueryDto(
     "<merchant_no>",
     "W20260806-0001",  // outWithdrawNo 申请时的单号
 )
-result, err := client.TradeQuery(ctx, dto)
+result, _, err := client.TradeQuery(ctx, dto)
 // result.BizData.Status             — 提现状态
 // result.BizData.WithdrawFinishDate — 完成时间
 ```
@@ -519,7 +519,7 @@ SDK 统一两层错误格式：
 所有错误通过 `help.E(code, msg)` 封装，`code` 为 `int64`（当前固定 `0`），`msg` 包含完整的错误码和描述。
 
 ```go
-result, err := client.CreatePrepare(ctx, dto)
+result, _, err := client.CreatePrepare(ctx, dto)
 if err != nil {
     // err 包含 bizCode 和 bizMsg
     log.Printf("进件失败: %v", err)
@@ -537,33 +537,31 @@ multipart 类方法返回业务数据本身（无信封包装）。
 
 ```go
 // 进件（加密信封，除 UploadFiles）
-func (x *Hst) CreatePrepare(ctx context.Context, dto *CreatePrepareDto) (*SignObjectRespResult[*CreatePrepareBizData], error)
-func (x *Hst) UpdatePrepare(ctx context.Context, dto *UpdatePrepareDto) (*SignObjectRespResult[*UpdatePrepareBizData], error)
+func (x *Hst) CreatePrepare(ctx context.Context, dto *CreatePrepareDto) (*SignObjectRespResult[*CreatePrepareBizData], *SignObjectResp, error)
+func (x *Hst) UpdatePrepare(ctx context.Context, dto *UpdatePrepareDto) (*SignObjectRespResult[*UpdatePrepareBizData], *SignObjectResp, error)
 func (x *Hst) UploadFiles(ctx context.Context, dto *UploadFilesDto) (*UploadFilesBizData, error) // multipart
-func (x *Hst) Confirm(ctx context.Context, dto *ConfirmDto) (*SignObjectRespResult[*ConfirmBizData], error)
-func (x *Hst) SettlementStatus(ctx context.Context, dto *SettlementStatusDto) (*SignObjectRespResult[*SettlementStatusBizData], error)
+func (x *Hst) Confirm(ctx context.Context, dto *ConfirmDto) (*SignObjectRespResult[*ConfirmBizData], *SignObjectResp, error)
+func (x *Hst) SettlementStatus(ctx context.Context, dto *SettlementStatusDto) (*SignObjectRespResult[*SettlementStatusBizData], *SignObjectResp, error)
 
 // 分账
-func (x *Hst) GetUploadToken(ctx context.Context, dto *GetUploadTokenDto) (*SignObjectRespResult[*GetUploadTokenBizData], error)
+func (x *Hst) GetUploadToken(ctx context.Context, dto *GetUploadTokenDto) (*SignObjectRespResult[*GetUploadTokenBizData], *SignObjectResp, error)
 func (x *Hst) TradeImport(ctx context.Context, dto *TradeImportDto) (busId string, err error) // multipart
-func (x *Hst) TradeConfirm(ctx context.Context, dto *TradeConfirmDto) (*SignObjectRespResult[bool], error)
-func (x *Hst) TradeStatus(ctx context.Context, dto *TradeStatusDto) (*SignObjectRespResult[*TradeStatusBizData], error)
-func (x *Hst) TradeCancel(ctx context.Context, dto *TradeCancelDto) (*SignObjectRespResult[bool], error)
+func (x *Hst) TradeConfirm(ctx context.Context, dto *TradeConfirmDto) (*SignObjectRespResult[bool], *SignObjectResp, error)
+func (x *Hst) TradeStatus(ctx context.Context, dto *TradeStatusDto) (*SignObjectRespResult[*TradeStatusBizData], *SignObjectResp, error)
+func (x *Hst) TradeCancel(ctx context.Context, dto *TradeCancelDto) (*SignObjectRespResult[bool], *SignObjectResp, error)
 
 // 余额查询
-func (x *Hst) AvailableBalance(ctx context.Context, dto *AvailableBalanceDto) (*SignObjectRespResult[*AvailableBalanceBizData], error)
-func (x *Hst) BrandBalance(ctx context.Context, dto *BrandBalanceDto) (*SignObjectRespResult[string], error)
+func (x *Hst) AvailableBalance(ctx context.Context, dto *AvailableBalanceDto) (*SignObjectRespResult[*AvailableBalanceBizData], *SignObjectResp, error)
+func (x *Hst) BrandBalance(ctx context.Context, dto *BrandBalanceDto) (*SignObjectRespResult[string], *SignObjectResp, error)
 
 // 提现
-func (x *Hst) Apply(ctx context.Context, dto *ApplyDto) (*SignObjectRespResult[*ApplyBizData], error)
-func (x *Hst) TradeQuery(ctx context.Context, dto *TradeQueryDto) (*SignObjectRespResult[*TradeQueryBizData], error)
+func (x *Hst) Apply(ctx context.Context, dto *ApplyDto) (*SignObjectRespResult[*ApplyBizData], *SignObjectResp, error)
+func (x *Hst) TradeQuery(ctx context.Context, dto *TradeQueryDto) (*SignObjectRespResult[*TradeQueryBizData], *SignObjectResp, error)
 
 // 特殊用途
 func NewHst(option *Option) (*Hst, error)
 func (x *Hst) NewSignObjectReq(body Body) (*SignObjectReq, error) // 组装加密信封（特殊场景）
-func (x *Hst) Request(ctx context.Context, path string, signObjectReq *SignObjectReq) (string, error) // 发送信封请求，返回解密明文
-func WithSignObjectResp(ctx context.Context) context.Context        // ctx 挂载信封容器
-func SignObjectRespFromContext(ctx context.Context) *SignObjectResp // 读取最近一次信封
+func (x *Hst) Request(ctx context.Context, path string, signObjectReq *SignObjectReq) (*SignObjectResp, error) // 发送信封请求，返回解密后的完整信封
 ```
 
 ### DTO 构造函数签名
@@ -615,24 +613,19 @@ func (x *UploadFilesDto) SetFiles(field string, files ...*UploadFile) *UploadFil
 
 ## 获取网关响应信封
 
-加密信封类接口（进件、分账、余额、提现）如需记录 `clientReqTxn`、`timestamp`、`signature` 等信封字段（审计/对账），调用前用 `WithSignObjectResp` 包装 ctx，调用后用 `SignObjectRespFromContext` 读取：
+加密信封类接口会同时返回业务结果和完整的 `SignObjectResp`：
 
 ```go
-ctx = hst.WithSignObjectResp(ctx)
-
-result, err := client.CreatePrepare(ctx, dto)
-
-if resp := hst.SignObjectRespFromContext(ctx); resp != nil {
+result, resp, err := client.CreatePrepare(ctx, dto)
+if resp != nil {
     log.Printf("txn=%s timestamp=%s", resp.ClientReqTxn, resp.Timestamp)
-    // resp.Body 已是解密后的业务明文 JSON
 }
 ```
 
 要点：
 
-- 信封在每次请求后写入（含失败请求：`bizSuccess=false`、网关层错误、验签失败）；仅网络错误/响应无法解析时为 nil（此时确实无信封）
-- 同一 ctx 连续多次请求保留最近一次；需要逐次记录时，每次调用前重新 `WithSignObjectResp`
-- 不要把同一挂载 ctx 共享给多个 goroutine 并发请求；并发场景各 goroutine 各自挂载
+- 网关响应能解析时，即使网关报错或验签失败，`resp` 也会返回
+- 不需要外层响应的应用可用 `_` 忽略：`result, _, err := client.CreatePrepare(ctx, dto)`
 - `UploadFiles` / `TradeImport` 为 multipart 普通响应，不产生加密信封
 
 ## 数据类型

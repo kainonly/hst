@@ -30,7 +30,7 @@ func NewTradeCancelDto(busId string) *TradeCancelDto {
 // TradeCancel 取消导入。
 // 取消尚未确认的文档交易导入批次。
 // 响应 bizData 为布尔值，true 表示取消成功。
-func (x *Hst) TradeCancel(ctx context.Context, dto *TradeCancelDto) (result *SignObjectRespResult[bool], err error) {
+func (x *Hst) TradeCancel(ctx context.Context, dto *TradeCancelDto) (result *SignObjectRespResult[bool], signObjectResp *SignObjectResp, err error) {
 	dto.PartnerId = x.Option.ChannelId
 	dto.MerchantId = x.Option.MerchantNo
 
@@ -39,12 +39,11 @@ func (x *Hst) TradeCancel(ctx context.Context, dto *TradeCancelDto) (result *Sig
 		return
 	}
 
-	var b string
-	if b, err = x.Request(ctx,
+	if signObjectResp, err = x.Request(ctx,
 		"/channel/doc-trade-file/cancel", signObjectReq); err != nil {
 		return
 	}
-	if err = sonic.UnmarshalString(b, &result); err != nil {
+	if err = sonic.UnmarshalString(signObjectResp.Body, &result); err != nil {
 		return
 	}
 	if !result.BizSuccess {
