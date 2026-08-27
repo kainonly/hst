@@ -146,14 +146,22 @@ func (x *Hst) Request(ctx context.Context, path string, signObjectReq *SignObjec
 			signObjectResp.ClientReqTxn, signObjectResp.Code, signObjectResp.Msg))
 		return
 	}
-	if err = x.decryptAndVerify(signObjectResp); err != nil {
+	if err = x.DecryptAndVerify(signObjectResp); err != nil {
 		return
 	}
 
 	return
 }
 
-func (x *Hst) decryptAndVerify(signObjectResp *SignObjectResp) (err error) {
+// DecryptAndVerify 解密并验签加密信封响应。
+// SM4-CBC 解密 Body（IV 取 IvHex，密钥取 Option.EncryptKey），
+// 解密结果原地写回 Body（此后为业务明文 JSON）；
+// 再用支付中心公钥（Option.WicoPubKey，SM2 userId = ServerAppId）验签，
+// 验签失败返回错误。
+//
+// 供直接使用 NewSignObjectReq + Request 编排特殊请求的调用方在拿到
+// SignObjectResp 后复用 SDK 的解密验签逻辑；常规业务方法内部已自动调用。
+func (x *Hst) DecryptAndVerify(signObjectResp *SignObjectResp) (err error) {
 	var ivBytes []byte
 	if ivBytes, err = hex.DecodeString(signObjectResp.IvHex); err != nil {
 		return

@@ -118,7 +118,7 @@ SDK 与网关之间的 JSON 请求/响应均包裹在加密信封中，流程固
 
 - 信封对调用方完全透明：业务方法返回的已是解密验签后的 `SignObjectRespResult[T]` 或 `BizData`
 - 如需原始信封（审计），见「获取网关响应信封」
-- `(*Hst).NewSignObjectReq`（组信封）与 `(*Hst).Request`（发请求 + 解密验签）为公开方法，仅特殊场景直接使用
+- `(*Hst).NewSignObjectReq`（组信封）、`(*Hst).Request`（发请求 + 解密验签，返回完整信封，Body 已是明文）与 `(*Hst).DecryptAndVerify`（单独解密验签）为公开方法，仅特殊场景直接使用
 
 ### multipart 上传（`UploadFiles` / `TradeImport`）
 
@@ -562,6 +562,7 @@ func (x *Hst) TradeQuery(ctx context.Context, dto *TradeQueryDto) (*SignObjectRe
 func NewHst(option *Option) (*Hst, error)
 func (x *Hst) NewSignObjectReq(body Body) (*SignObjectReq, error) // 组装加密信封（特殊场景）
 func (x *Hst) Request(ctx context.Context, path string, signObjectReq *SignObjectReq) (*SignObjectResp, error) // 发送信封请求，返回解密后的完整信封
+func (x *Hst) DecryptAndVerify(signObjectResp *SignObjectResp) error // 单独解密验签信封响应（Body 原地写回明文）
 ```
 
 ### DTO 构造函数签名
