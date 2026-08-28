@@ -171,7 +171,9 @@ func (x *Hst) DecryptAndVerify(signObjectResp *SignObjectResp) (err error) {
 		return
 	}
 	var keyBytes []byte
-	keyBytes, err = hex.DecodeString(x.Option.EncryptKey)
+	if keyBytes, err = hex.DecodeString(x.Option.EncryptKey); err != nil {
+		return
+	}
 	var decrypted []byte
 	if decrypted, err = sm4DecryptCBCPadding(encryptedBytes, keyBytes, ivBytes); err != nil {
 		return
