@@ -1,7 +1,6 @@
 package hst
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 
@@ -12,16 +11,16 @@ import (
 
 // TradeImportDto 上传交易订单文件请求体（multipart/form-data）。
 type TradeImportDto struct {
-	ChannelId   string // 渠道商 ID（用于凭证归属校验）
-	UploadToken string // 上传凭证（由 GetUploadToken 颁发）
-	FileData    []byte // 文件内容，须与申请上传凭证时计算 SM3 哈希的字节一致
+	ChannelId   string      // 渠道商 ID（用于凭证归属校验）
+	UploadToken string      // 上传凭证（由 GetUploadToken 颁发）
+	File        *UploadFile // XLSX 文件，文件名和内容对应申请上传凭证时提交的文件
 }
 
 // NewTradeImportDto 创建上传交易订单文件请求体。
-func NewTradeImportDto(uploadToken string, fileData []byte) *TradeImportDto {
+func NewTradeImportDto(uploadToken string, file *UploadFile) *TradeImportDto {
 	return &TradeImportDto{
 		UploadToken: uploadToken,
-		FileData:    fileData,
+		File:        file,
 	}
 }
 
@@ -29,12 +28,7 @@ func NewTradeImportDto(uploadToken string, fileData []byte) *TradeImportDto {
 // channelId / uploadToken 由 TradeImport 方法用 SetFormData 设置。
 func (x *TradeImportDto) multipartFields() []*resty.MultipartField {
 	return []*resty.MultipartField{
-		{
-			Name:     "file",
-			FileName: "trade.xlsx", // multipart 文件名由 SDK 设置，无需调用方提供
-			Reader:   bytes.NewReader(x.FileData),
-			FileSize: int64(len(x.FileData)),
-		},
+		x.File.field("file"),
 	}
 }
 
@@ -62,6 +56,9 @@ type TradeImportRespData struct {
 // uploadToken 为一次性凭证，无论上传成功与否都会被消费；上传失败需从 Step 1 重新开始。
 // 返回 busId，用于后续确认 / 查询 / 取消。
 func (x *Hst) TradeImport(ctx context.Context, dto *TradeImportDto) (busId string, err error) {
+	if dto == nil || dto.File == nil {
+		return "", fmt.Errorf("交易订单文件不能为空")
+	}
 	dto.ChannelId = x.Option.ChannelId
 
 	// channel-file 前缀，拼接完整 URL

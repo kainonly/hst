@@ -367,11 +367,12 @@ result, _, err := client.SettlementStatus(ctx, dto)
 
 ```go
 // 计算文件 SM3 哈希
-fileBytes, _ := os.ReadFile("trade.xlsx")
+fileName := "trade-20260702.xlsx" // 示例名称，使用实际文件名
+fileBytes, _ := os.ReadFile(fileName)
 fileSM3Hash := hex.EncodeToString(sm3.Sm3Sum(fileBytes))
 
 dto := hst.NewGetUploadTokenDto(
-    "trade.xlsx", // fileName 文件名（用于记录与日志）
+    fileName,    // fileName 文件名（用于记录与日志）
     fileSM3Hash,  // fileSM3Hash 64位十六进制
 )
 result, _, err := client.GetUploadToken(ctx, dto)
@@ -381,18 +382,18 @@ result, _, err := client.GetUploadToken(ctx, dto)
 
 ### 上传交易订单文件
 
-两步上传 **Step 2**。`multipart/form-data` 上传 XLSX 文件，直接传入 `[]byte`，支持用户上传、远程下载或内存生成的文件，无需落盘。
+两步上传 **Step 2**。`multipart/form-data` 上传 XLSX 文件，通过 `UploadFile` 传入实际文件名和 `[]byte`，支持用户上传、远程下载或内存生成的文件，无需落盘。
 
 ```go
 dto := hst.NewTradeImportDto(
     "<upload_token>", // uploadToken 来自 GetUploadToken
-    fileBytes,        // fileData 与 Step 1 计算 SM3 哈希使用同一份字节
+    hst.NewUploadFile(fileName, fileBytes), // 与 Step 1 使用相同文件名和内容字节
 )
 busId, err := client.TradeImport(ctx, dto)
 // busId — 业务主记录唯一 ID，用于后续确认/查询/取消
 ```
 
-> `channelId` 由 SDK 自动填充，无需传入。multipart 字段名固定为 `file`，文件名由 SDK 内部设置为 `trade.xlsx`，调用方只需传入文件内容并保存返回的 `busId`。
+> `channelId` 由 SDK 自动填充，无需传入。multipart 字段名固定为 `file`，文件名由调用方通过 `UploadFile.Name` 指定，接口不要求固定文件名。保存返回的 `busId` 用于后续操作。
 
 > `uploadToken` 一次性消费，上传失败需从 Step 1 重新申请。
 
@@ -577,7 +578,7 @@ func NewSettlementStatusDto(draftId string) *SettlementStatusDto
 
 // 分账
 func NewGetUploadTokenDto(fileName, fileSM3Hash string) *GetUploadTokenDto
-func NewTradeImportDto(uploadToken string, fileData []byte) *TradeImportDto
+func NewTradeImportDto(uploadToken string, file *UploadFile) *TradeImportDto
 func NewTradeConfirmDto(busId string) *TradeConfirmDto
 func NewTradeStatusDto(busId string) *TradeStatusDto
 func NewTradeCancelDto(busId string) *TradeCancelDto

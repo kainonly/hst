@@ -25,7 +25,7 @@ func TestTradeImport(t *testing.T) {
 	if err != nil {
 		t.Fatalf("读取交易文件失败: %v", err)
 	}
-	dto := hst.NewTradeImportDto(getTokenResult.UploadToken, fileData)
+	dto := hst.NewTradeImportDto(getTokenResult.UploadToken, hst.NewUploadFile(filepath.Base(filePath), fileData))
 	busId, err := client.TradeImport(ctx, dto)
 	if err != nil {
 		logResult(t, "trade_import", errorLogData{false, err.Error()})
@@ -50,7 +50,7 @@ func TestTradeImport2(t *testing.T) {
 	if err != nil {
 		t.Fatalf("读取交易文件失败: %v", err)
 	}
-	dto := hst.NewTradeImportDto(getTokenResult.UploadToken, fileData)
+	dto := hst.NewTradeImportDto(getTokenResult.UploadToken, hst.NewUploadFile(filepath.Base(filePath), fileData))
 	busId, err := client.TradeImport(ctx, dto)
 	if err != nil {
 		logResult(t, "trade_import_2", errorLogData{false, err.Error()})
