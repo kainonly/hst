@@ -2,6 +2,7 @@ package hst_test
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -20,7 +21,11 @@ func TestTradeImport(t *testing.T) {
 	t.Logf("从 get_upload_token 日志读取到 uploadToken: %s", getTokenResult.UploadToken)
 
 	filePath := filepath.Join("files", "trade.xlsx")
-	dto := hst.NewTradeImportDto(getTokenResult.UploadToken, filePath)
+	fileData, err := os.ReadFile(filePath)
+	if err != nil {
+		t.Fatalf("读取交易文件失败: %v", err)
+	}
+	dto := hst.NewTradeImportDto(getTokenResult.UploadToken, fileData)
 	busId, err := client.TradeImport(ctx, dto)
 	if err != nil {
 		logResult(t, "trade_import", errorLogData{false, err.Error()})
@@ -41,7 +46,11 @@ func TestTradeImport2(t *testing.T) {
 	t.Logf("从 get_upload_token_2 日志读取到 uploadToken: %s", getTokenResult.UploadToken)
 
 	filePath := filepath.Join("files", "trade-2.xlsx")
-	dto := hst.NewTradeImportDto(getTokenResult.UploadToken, filePath)
+	fileData, err := os.ReadFile(filePath)
+	if err != nil {
+		t.Fatalf("读取交易文件失败: %v", err)
+	}
+	dto := hst.NewTradeImportDto(getTokenResult.UploadToken, fileData)
 	busId, err := client.TradeImport(ctx, dto)
 	if err != nil {
 		logResult(t, "trade_import_2", errorLogData{false, err.Error()})

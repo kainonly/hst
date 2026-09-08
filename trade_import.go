@@ -1,9 +1,9 @@
 package hst
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"path/filepath"
 
 	"github.com/bytedance/sonic"
 	"github.com/kainonly/go/help"
@@ -14,14 +14,14 @@ import (
 type TradeImportDto struct {
 	ChannelId   string // 渠道商 ID（用于凭证归属校验）
 	UploadToken string // 上传凭证（由 GetUploadToken 颁发）
-	FilePath    string // XLSX 文件本地路径
+	FileData    []byte // 文件内容，须与申请上传凭证时计算 SM3 哈希的字节一致
 }
 
 // NewTradeImportDto 创建上传交易订单文件请求体。
-func NewTradeImportDto(uploadToken string, filePath string) *TradeImportDto {
+func NewTradeImportDto(uploadToken string, fileData []byte) *TradeImportDto {
 	return &TradeImportDto{
 		UploadToken: uploadToken,
-		FilePath:    filePath,
+		FileData:    fileData,
 	}
 }
 
@@ -31,8 +31,9 @@ func (x *TradeImportDto) multipartFields() []*resty.MultipartField {
 	return []*resty.MultipartField{
 		{
 			Name:     "file",
-			FileName: filepath.Base(x.FilePath),
-			FilePath: x.FilePath,
+			FileName: "trade.xlsx", // multipart 文件名由 SDK 设置，无需调用方提供
+			Reader:   bytes.NewReader(x.FileData),
+			FileSize: int64(len(x.FileData)),
 		},
 	}
 }

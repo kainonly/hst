@@ -371,7 +371,7 @@ fileBytes, _ := os.ReadFile("trade.xlsx")
 fileSM3Hash := hex.EncodeToString(sm3.Sm3Sum(fileBytes))
 
 dto := hst.NewGetUploadTokenDto(
-    "trade.xlsx", // fileName 文件名（须与 Step 2 上传的文件名一致）
+    "trade.xlsx", // fileName 文件名（用于记录与日志）
     fileSM3Hash,  // fileSM3Hash 64位十六进制
 )
 result, _, err := client.GetUploadToken(ctx, dto)
@@ -381,18 +381,18 @@ result, _, err := client.GetUploadToken(ctx, dto)
 
 ### 上传交易订单文件
 
-两步上传 **Step 2**。`multipart/form-data` 上传 XLSX 文件。
+两步上传 **Step 2**。`multipart/form-data` 上传 XLSX 文件，直接传入 `[]byte`，支持用户上传、远程下载或内存生成的文件，无需落盘。
 
 ```go
 dto := hst.NewTradeImportDto(
-    "<upload_token>",   // uploadToken 来自 GetUploadToken
-    "files/trade.xlsx", // filePath XLSX 文件本地路径
+    "<upload_token>", // uploadToken 来自 GetUploadToken
+    fileBytes,        // fileData 与 Step 1 计算 SM3 哈希使用同一份字节
 )
 busId, err := client.TradeImport(ctx, dto)
 // busId — 业务主记录唯一 ID，用于后续确认/查询/取消
 ```
 
-> `channelId` 由 SDK 自动填充，无需传入。multipart 字段名固定为 `file`，文件名取自路径基名。
+> `channelId` 由 SDK 自动填充，无需传入。multipart 字段名固定为 `file`，文件名由 SDK 内部设置为 `trade.xlsx`，调用方只需传入文件内容并保存返回的 `busId`。
 
 > `uploadToken` 一次性消费，上传失败需从 Step 1 重新申请。
 
@@ -577,7 +577,7 @@ func NewSettlementStatusDto(draftId string) *SettlementStatusDto
 
 // 分账
 func NewGetUploadTokenDto(fileName, fileSM3Hash string) *GetUploadTokenDto
-func NewTradeImportDto(uploadToken, filePath string) *TradeImportDto
+func NewTradeImportDto(uploadToken string, fileData []byte) *TradeImportDto
 func NewTradeConfirmDto(busId string) *TradeConfirmDto
 func NewTradeStatusDto(busId string) *TradeStatusDto
 func NewTradeCancelDto(busId string) *TradeCancelDto
