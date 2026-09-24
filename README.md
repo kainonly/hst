@@ -167,11 +167,13 @@ CreatePrepare ──> UploadFiles ──> [EDITING] ──> Confirm ──> Sett
 ### 分账（文档交易订单导入）
 
 ```
-GetUploadToken ──> TradeImport ──> TradeConfirm ──> TradeStatus（轮询）
+GetUploadToken ──> TradeImport ──> TradeConfirm ──> TradeStatus（轮询 5~10s）
  (Step1 fileName    (Step2 上传      (确认导入,       DocStatus:
-  + fileSM3Hash)     XLSX → busId)    触发补单分账)   IMPORTING/PENDING/SUCCESS/FAILED)
+  + fileSM3Hash)     XLSX → busId)    受理→PROCESSING) IMPORTING/PENDING/PROCESSING/COMPLETED/PARTIAL_SUCCESS/FAILED/CANCELLED
 
 取消路径：TradeCancel（仅取消尚未 Confirm 的批次）
+分账进度：docStatus 终态 COMPLETED/PARTIAL_SUCCESS 后自动触发分账
+        ──> TradeSplitStatus 轮询 splitStatus（仅 SUCCESS 为分账完成）
 ```
 
 ### 提现
@@ -359,6 +361,7 @@ result, _, err := client.SettlementStatus(ctx, dto)
 | `TradeImport` | `/channel-file/doc-trade-file/import` | 上传交易订单文件（Step 2，multipart） |
 | `TradeConfirm` | `/channel/doc-trade-file/confirm` | 确认导入 |
 | `TradeStatus` | `/channel/doc-trade-file/status` | 查询主记录状态 |
+| `TradeSplitStatus` | `/channel/doc-trade-file/split/status` | 查询分账状态 |
 | `TradeCancel` | `/channel/doc-trade-file/cancel` | 取消导入 |
 
 ### 申请文件上传凭证
@@ -393,33 +396,99 @@ busId, err := client.TradeImport(ctx, dto)
 // busId — 业务主记录唯一 ID，用于后续确认/查询/取消
 ```
 
+**XLSX 文件格式**：首行为表头，列名须与下表**完全一致**，从第二行开始为数据行。
+
+| 列名 | 必填 | 说明 |
+|---|---|---|
+| `外部订单号` | 是 | 商户端唯一订单号（同一商户+渠道商下不可重复） |
+| `交易金额(元)` | 是 | 交易金额，单位元；后端按 ×100 转为分存储 |
+| `订单摘要` | 否 | 订单摘要 / 标题 |
+| `收款商户ID` | 是 | 结算（收款）商户 ID |
+
+以下字段由平台在导入时**自动补齐**，无需写入文件：支付渠道 `DOC_IMPORT`、支付产品 `OTHER_PAY`、解决方案 `LIVE_COMMERCE`、交易场景 `LIVE_CASHIER`。
+
 > `channelId` 由 SDK 自动填充，无需传入。multipart 字段名固定为 `file`，文件名由调用方通过 `UploadFile.Name` 指定，接口不要求固定文件名。保存返回的 `busId` 用于后续操作。
 
 > `uploadToken` 一次性消费，上传失败需从 Step 1 重新申请。
 
 ### 确认导入
 
-确认已上传的文档交易批次并触发补单分账。
+确认已上传的文档交易批次并触发补单分账，需在文件解析完成后调用。
 
 ```go
 dto := hst.NewTradeConfirmDto("<bus_id>")
 result, _, err := client.TradeConfirm(ctx, dto)
-// result.BizData — bool，true 表示确认成功
+// result.BizData — bool，true 表示确认请求已受理，批次进入补单处理流程
 ```
+
+> **异步受理**：校验通过后主记录立即变为 `PROCESSING` 并返回 `true`。`BizData = true` 只表示**已受理**，不代表补单已完成，请通过 `TradeStatus` 轮询 `docStatus` 获取最终结果（建议间隔 5~10 秒，明细较多时处理时间相应变长）。
+
+| DocStatus | 说明 | 是否终态 |
+|---|---|---|
+| `PROCESSING` | 补单处理中，请继续轮询 | 否 |
+| `COMPLETED` | 全部明细补单成功 | 是 |
+| `PARTIAL_SUCCESS` | 部分明细补单成功 | 是 |
+| `FAILED` | 全部明细补单失败 | 是 |
+
+> 文件仍在解析中（`IMPORTING` 或明细数未就绪）时不允许确认；批次已确认过（`docStatus` 不为 `PENDING`）时重复调用会返回错误，不会重复补单。
+
+> 补单完成后（`COMPLETED` / `PARTIAL_SUCCESS`）平台**自动触发一次分账**（异步），渠道侧无需也无法手动触发。继续轮询 `TradeStatus` 可见 `splitStatus` / `splitBatchNo` 随分账进度更新，或用 `TradeSplitStatus` 查询分账进度；分账失败 / 专户余额不足的重试由平台运营处理，无需渠道侧调用接口。
 
 ### 查询主记录状态
 
 ```go
 dto := hst.NewTradeStatusDto("<bus_id>")
 result, _, err := client.TradeStatus(ctx, dto)
-// result.BizData.DocStatus        — IMPORTING/PENDING/SUCCESS/FAILED
+// result.BizData.DocStatus        — 见下表
 // result.BizData.TotalDetailCount — 明细总数
 // result.BizData.SuccessCount     — 成功数
 // result.BizData.FailCount        — 失败数
 // result.BizData.SuccessAmount    — 成功金额（元）
 // result.BizData.FailAmount       — 失败金额（元）
 // result.BizData.ProcessingAmount — 处理中金额（元）
+// result.BizData.SplitStatus      — 分账状态（最新一条分账记录），尚未触发过分账时为空
+// result.BizData.SplitBatchNo     — 网商银行来款打批批次号（最新一条分账记录），尚未触发过分账时为空
+// result.BizData.SplitFailReason  — 分账失败/余额不足原因，仅 splitStatus 为 FAILED/BALANCE_INSUFFICIENT 时有值
 ```
+
+| DocStatus | 说明 |
+|---|---|
+| `IMPORTING` | 文件解析中，此时不可确认 |
+| `PENDING` | 解析完成待确认，可调用 `TradeConfirm` |
+| `PROCESSING` | 已确认，补单处理中（异步），请继续轮询 |
+| `COMPLETED` | 全部明细补单成功，系统自动触发分账 |
+| `PARTIAL_SUCCESS` | 部分明细补单成功，系统对已成功明细自动触发分账 |
+| `FAILED` | 解析失败或全部明细补单失败 |
+| `CANCELLED` | 已取消 |
+
+> `splitStatus` / `splitBatchNo` / `splitFailReason` 为最新一条分账记录的冗余视图，取值同 [`TradeSplitStatus`](#查询分账状态)；无需单独调用分账状态接口即可在轮询 `docStatus` 的同时拿到分账进度。
+
+### 查询分账状态
+
+按批次号查询最新一条分账记录的状态与进度。补单完成后平台自动触发分账，本接口用于跟踪该次分账。
+
+```go
+dto := hst.NewTradeSplitStatusDto("<bus_id>")
+result, _, err := client.TradeSplitStatus(ctx, dto)
+// result.BizData — *TradeSplitStatusBizData，批次从未触发过分账时为 nil
+// result.BizData.DocTradeFileBusId — 文档导入批次号
+// result.BizData.DetailCount      — 本次选中的补单成功明细数
+// result.BizData.TotalAmount      — 本次分账汇总金额（元）
+// result.BizData.MybankBatchNo    — 网商银行来款打批批次号
+// result.BizData.SplitStatus      — 见下表
+// result.BizData.FailReason       — 仅 FAILED / BALANCE_INSUFFICIENT 时有值
+```
+
+| SplitStatus | 说明 | 是否终态 |
+|---|---|---|
+| `PENDING` | 已受理，待异步执行 | 否 |
+| `PROCESSING` | 分账处理中 | 否 |
+| `SUCCESS` | 分账成功 | 是 |
+| `FAILED` | 分账失败，需人工介入，禁止自行重试 | 是 |
+| `BALANCE_INSUFFICIENT` | 订单管理专户余额不足，需人工介入，禁止自行重试 | 是 |
+| `NO_ELIGIBLE_RECORDS` | 批次下无可分账的成功补单记录 | 是 |
+
+> 只有 `SUCCESS` 才代表分账已完成。`FAILED` / `BALANCE_INSUFFICIENT` 属于需平台运营人工介入解锁的终态，渠道侧不需要也不能自行重新触发分账。
 
 ### 取消导入
 

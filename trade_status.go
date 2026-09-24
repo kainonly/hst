@@ -40,10 +40,22 @@ type TradeStatusBizData struct {
 	SuccessAmount    string `json:"successAmount"`    // 成功总金额，单位：元，保留两位小数
 	FailAmount       string `json:"failAmount"`       // 失败总金额，单位：元，保留两位小数
 	ProcessingAmount string `json:"processingAmount"` // 处理中金额，单位：元，保留两位小数
-	DocStatus        string `json:"docStatus"`        // 处理状态（如 IMPORTING 解析中）
+	DocStatus        string `json:"docStatus"`        // 处理状态，见下方取值
 	CreateTime       string `json:"createTime"`       // 创建时间
 	UpdateTime       string `json:"updateTime"`       // 更新时间
+	SplitStatus      string `json:"splitStatus"`      // 分账状态（最新一条分账记录），取值同 TradeSplitStatus，批次尚未触发过分账时为空
+	SplitBatchNo     string `json:"splitBatchNo"`     // 网商银行来款打批批次号（最新一条分账记录），尚未触发过分账时为空
+	SplitFailReason  string `json:"splitFailReason"`  // 分账失败/余额不足原因（最新一条分账记录），仅对应分账状态为 FAILED/BALANCE_INSUFFICIENT 时有值
 }
+
+// docStatus 取值：
+//   - IMPORTING        文件解析中，此时不可确认
+//   - PENDING          解析完成待确认，可调用 TradeConfirm
+//   - PROCESSING       已确认，补单处理中（异步），请继续轮询
+//   - COMPLETED        全部明细补单成功，系统自动触发分账（终态）
+//   - PARTIAL_SUCCESS  部分明细补单成功，系统对已成功明细自动触发分账（终态）
+//   - FAILED           解析失败或全部明细补单失败（终态）
+//   - CANCELLED        已取消（终态）
 
 // TradeStatus 查询主记录状态。
 // 根据批次号查询文档交易导入主记录的状态与进度。
