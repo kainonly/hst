@@ -7,17 +7,17 @@ import (
 	"github.com/kainonly/hst"
 )
 
-func TestTradeQuery(t *testing.T) {
+func TestWithdrawalQuery(t *testing.T) {
 	ctx := context.Background()
 
 	// 生成外部提现单号（与 apply 测试一致，查不到也无所谓）
 
-	dto := hst.NewTradeQueryDto(
+	dto := hst.NewWithdrawalQueryDto(
 		cfg.SubMerchantNo[0],
 		`W20260813161712`, // outWithdrawNo
 	)
 
-	result, _, err := client.TradeQuery(ctx, dto)
+	result, _, err := client.WithdrawalQuery(ctx, dto)
 	if err != nil {
 		logResult(t, "withdrawal_query", errorLogData{false, err.Error()})
 		return

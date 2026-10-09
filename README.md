@@ -144,8 +144,8 @@ SDK 与网关之间的 JSON 请求/响应均包裹在加密信封中，流程固
 | `merchantId` / `orgId` / `accountId` | `Confirm` 响应（确认成功后回填） | 渠道侧留存 | 商户/企业/结算账户标识 |
 | `merchantNo` | 进件成功后平台分配（渠道侧自备） | 余额查询、提现接口入参 | 商户号 |
 | `busId` | `TradeImport` 返回 | `TradeConfirm` / `TradeStatus` / `TradeCancel` | 分账批次主记录 ID |
-| `outWithdrawNo` | 调用方自行生成 | `Apply` / `TradeQuery` | 提现幂等键，超时重查不可换单号 |
-| `withdrawNo` | `Apply` 响应 | 渠道侧留存 | 平台提现单号 |
+| `outWithdrawNo` | 调用方自行生成 | `WithdrawalApply` / `WithdrawalQuery` | 提现幂等键，超时重查不可换单号 |
+| `withdrawNo` | `WithdrawalApply` 响应 | 渠道侧留存 | 平台提现单号 |
 
 ## 业务流程
 
@@ -179,9 +179,9 @@ GetUploadToken ──> TradeImport ──> TradeConfirm ──> TradeStatus（�
 ### 提现
 
 ```
-Apply（outWithdrawNo 幂等键 + totalAmount）──> TradeQuery（轮询）
+WithdrawalApply（outWithdrawNo 幂等键 + totalAmount）──> WithdrawalQuery（轮询）
                                               status: DEALING/WAIT_CONFIRM/SUCCESS/FAIL/UNKNOWN
-危险规则：Apply 超时/中断时资金可能已出账，必须用原 outWithdrawNo 调 TradeQuery 查明结果，
+危险规则：WithdrawalApply 超时/中断时资金可能已出账，必须用原 outWithdrawNo 调 WithdrawalQuery 查明结果，
         换单号重发等于再提现一笔；UNKNOWN 须联系平台，不能自行判为失败。
 ```
 
@@ -538,19 +538,19 @@ result, _, err := client.BrandBalance(ctx, dto)
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| `Apply` | `/channel/merchant/withdrawal/apply` | 商户提现申请 |
-| `TradeQuery` | `/channel/merchant/withdrawal/query` | 查询提现订单 |
+| `WithdrawalApply` | `/channel/merchant/withdrawal/apply` | 商户提现申请 |
+| `WithdrawalQuery` | `/channel/merchant/withdrawal/query` | 查询提现订单 |
 
 ### 商户提现申请
 
 ```go
-dto := hst.NewApplyDto(
+dto := hst.NewWithdrawalApplyDto(
     "<merchant_no>",     // merchantNo
     "W20260806-0001",   // outWithdrawNo 幂等键
     "100.00",           // totalAmount 提现金额（元）
 ).SetRemark("日常结算提现")
 
-result, _, err := client.Apply(ctx, dto)
+result, _, err := client.WithdrawalApply(ctx, dto)
 // result.BizData.WithdrawNo — 平台提现单号
 // result.BizData.Status    — 提现状态
 ```
@@ -560,11 +560,11 @@ result, _, err := client.Apply(ctx, dto)
 ### 查询提现订单
 
 ```go
-dto := hst.NewTradeQueryDto(
+dto := hst.NewWithdrawalQueryDto(
     "<merchant_no>",
     "W20260806-0001",  // outWithdrawNo 申请时的单号
 )
-result, _, err := client.TradeQuery(ctx, dto)
+result, _, err := client.WithdrawalQuery(ctx, dto)
 // result.BizData.Status             — 提现状态
 // result.BizData.WithdrawFinishDate — 完成时间
 ```
@@ -625,8 +625,8 @@ func (x *Hst) AvailableBalance(ctx context.Context, dto *AvailableBalanceDto) (*
 func (x *Hst) BrandBalance(ctx context.Context, dto *BrandBalanceDto) (*SignObjectRespResult[string], *SignObjectResp, error)
 
 // 提现
-func (x *Hst) Apply(ctx context.Context, dto *ApplyDto) (*SignObjectRespResult[*ApplyBizData], *SignObjectResp, error)
-func (x *Hst) TradeQuery(ctx context.Context, dto *TradeQueryDto) (*SignObjectRespResult[*TradeQueryBizData], *SignObjectResp, error)
+func (x *Hst) WithdrawalApply(ctx context.Context, dto *WithdrawalApplyDto) (*SignObjectRespResult[*WithdrawalApplyBizData], *SignObjectResp, error)
+func (x *Hst) WithdrawalQuery(ctx context.Context, dto *WithdrawalQueryDto) (*SignObjectRespResult[*WithdrawalQueryBizData], *SignObjectResp, error)
 
 // 特殊用途
 func NewHst(option *Option) (*Hst, error)
@@ -657,8 +657,8 @@ func NewAvailableBalanceDto(merchantNo string) *AvailableBalanceDto
 func NewBrandBalanceDto(merchantNo string) *BrandBalanceDto
 
 // 提现
-func NewApplyDto(merchantNo, outWithdrawNo, totalAmount string) *ApplyDto
-func NewTradeQueryDto(merchantNo, outWithdrawNo string) *TradeQueryDto
+func NewWithdrawalApplyDto(merchantNo, outWithdrawNo, totalAmount string) *WithdrawalApplyDto
+func NewWithdrawalQueryDto(merchantNo, outWithdrawNo string) *WithdrawalQueryDto
 
 // 上传文件源（仅 UploadFiles 使用）
 func NewUploadFile(name string, data []byte) *UploadFile // 文件名 + 内容字节（与 Step 1 SM3 哈希的字节一致）
@@ -679,8 +679,8 @@ func (x *UploadFilesDto) SetFiles(field string, files ...*UploadFile) *UploadFil
 | `TradeStatus` | `*TradeStatusBizData` | `DocStatus`、`TotalDetailCount`、`SuccessCount`、`FailCount`、金额字段 |
 | `AvailableBalance` | `*AvailableBalanceBizData` | `BalanceInfos`（按 `accountType` 取：AVAILABLE_BALANCE 可提现 / PENDING_BALANCE 待结算） |
 | `BrandBalance` | `string` | 品牌专户余额（元，平台备付金，非商户额度） |
-| `Apply` | `*ApplyBizData` | `WithdrawNo`、`Status`、`ErrorDesc`（幂等命中时另有金额/时间快照） |
-| `TradeQuery` | `*TradeQueryBizData` | 订单完整快照（`Status`、`WithdrawFinishDate`、`ErrorDesc`） |
+| `WithdrawalApply` | `*WithdrawalApplyBizData` | `WithdrawNo`、`Status`、`ErrorDesc`（幂等命中时另有金额/时间快照） |
+| `WithdrawalQuery` | `*WithdrawalQueryBizData` | 订单完整快照（`Status`、`WithdrawFinishDate`、`ErrorDesc`） |
 
 ## 获取网关响应信封
 

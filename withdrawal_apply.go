@@ -8,7 +8,7 @@ import (
 	"github.com/bytedance/sonic"
 )
 
-type ApplyDto struct {
+type WithdrawalApplyDto struct {
 	ReqTimestamp  string `json:"reqTimestamp"`  // 业务请求时间戳，须与外层信封 timestamp 一致（防重放）
 	PartnerId     string `json:"partnerId"`     // 渠道商 ID（与信封 channelId 不是同一个字段，必须显式传入）
 	MerchantNo    string `json:"merchantNo"`    // 平台商户号，须归属于 partnerId
@@ -17,17 +17,17 @@ type ApplyDto struct {
 	Remark        string `json:"remark"`        // 备注
 }
 
-func (x *ApplyDto) GetTs() string {
+func (x *WithdrawalApplyDto) GetTs() string {
 	return x.ReqTimestamp
 }
 
-// NewApplyDto 创建商户提现申请请求体。
-func NewApplyDto(
+// NewWithdrawalApplyDto 创建商户提现申请请求体。
+func NewWithdrawalApplyDto(
 	merchantNo string,
 	outWithdrawNo string,
 	totalAmount string,
-) *ApplyDto {
-	return &ApplyDto{
+) *WithdrawalApplyDto {
+	return &WithdrawalApplyDto{
 		MerchantNo:    merchantNo,
 		OutWithdrawNo: outWithdrawNo,
 		TotalAmount:   totalAmount,
@@ -36,19 +36,19 @@ func NewApplyDto(
 }
 
 // SetRemark 设置备注。
-func (x *ApplyDto) SetRemark(i string) *ApplyDto {
+func (x *WithdrawalApplyDto) SetRemark(i string) *WithdrawalApplyDto {
 	x.Remark = i
 	return x
 }
 
-// ApplyBizData 商户提现申请响应 bizData。
+// WithdrawalApplyBizData 商户提现申请响应 bizData。
 //
 // 首次受理只回带 withdrawNo / status / errorDesc；
 // 命中幂等（同一 outWithdrawNo 重复提交）时回带库中订单的完整快照
 // （含 outWithdrawNo / totalAmount / withdrawApplyDate / withdrawFinishDate）。
 //
 // 不要依赖申请接口回带金额或时间做对账，一律以查询提现订单的返回为准。
-type ApplyBizData struct {
+type WithdrawalApplyBizData struct {
 	WithdrawNo         string `json:"withdrawNo"`         // 平台提现单号，唯一
 	OutWithdrawNo      string `json:"outWithdrawNo"`      // 外部提现单号（原样回带，仅幂等命中时返回）
 	TotalAmount        string `json:"totalAmount"`        // 提现金额，单位元（仅幂等命中时返回）
@@ -58,7 +58,7 @@ type ApplyBizData struct {
 	ErrorDesc          string `json:"errorDesc"`          // 错误描述，status=FAIL 时有值
 }
 
-// Apply 商户提现申请。
+// WithdrawalApply 商户提现申请。
 // 渠道商代其名下商户发起提现，把网商银行账户中的可用余额提现到商户已绑定的结算银行卡。
 // 平台内部合并了网商银行的「申请 + 短信确认」两步，渠道商无需处理短信验证码。
 //
@@ -66,7 +66,7 @@ type ApplyBizData struct {
 //   - 调用超时、连接中断时资金可能已在出账。此时须用原 outWithdrawNo 调用查询提现订单查明结果；
 //     换一个单号重发等于再提现一笔。
 //   - outWithdrawNo 是幂等键，重复调用返回首次结果。
-func (x *Hst) Apply(ctx context.Context, dto *ApplyDto) (result *SignObjectRespResult[*ApplyBizData], signObjectResp *SignObjectResp, err error) {
+func (x *Hst) WithdrawalApply(ctx context.Context, dto *WithdrawalApplyDto) (result *SignObjectRespResult[*WithdrawalApplyBizData], signObjectResp *SignObjectResp, err error) {
 	dto.PartnerId = x.Option.ChannelId
 
 	var signObjectReq *SignObjectReq
