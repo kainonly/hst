@@ -12,7 +12,7 @@ WiCoin 渠道商 Go SDK，封装了进件、分账、余额查询、提现等全
 - **JSON 高性能**：使用 bytedance/sonic 进行 JSON 编解码
 - **链式调用**：非必填字段通过 `Set` 方法链式设置
 - **泛型响应**：利用 Go 1.26 泛型，统一 `SignObjectRespResult[T]` 包装业务响应
-- **接口全覆盖**：进件 5 个 + 分账 5 个 + 余额查询 2 个 + 提现 2 个，共 14 个接口
+- **接口全覆盖**：进件 6 个 + 分账 6 个 + 余额查询 2 个 + 提现 2 个，共 16 个接口
 
 ## 安装
 
@@ -140,8 +140,8 @@ SDK 与网关之间的 JSON 请求/响应均包裹在加密信封中，流程固
 |---|---|---|---|
 | `channelId` / `partnerId` / `channelNo` | 初始化配置 `Option.ChannelId` | SDK 自动填充到请求 | 渠道商身份，三者同义 |
 | `uploadToken` | `CreatePrepare` / `UpdatePrepare` / `GetUploadToken` 响应 | `UploadFiles` / `TradeImport` | 一次性，进件 900s / 分账 300s 有效 |
-| `draftId` | `UploadFiles` 响应 `BizData.DraftId` | `UpdatePrepare` / `Confirm` / `SettlementStatus` | 草稿唯一 ID，确认前有效 |
-| `merchantId` / `orgId` / `accountId` | `Confirm` 响应（确认成功后回填） | 渠道侧留存 | 商户/企业/结算账户标识 |
+| `draftId` | `UploadFiles` / `MerchantOnboardInfo` 响应 | `UpdatePrepare` / `Confirm` / `SettlementStatus` | 草稿唯一 ID，确认前有效 |
+| `merchantId` / `orgId` / `accountId` | `Confirm` / `MerchantOnboardInfo` 响应（确认成功后回填） | `MerchantOnboardInfo` 入参 / 渠道侧留存 | 商户/企业/结算账户标识 |
 | `merchantNo` | 进件成功后平台分配（渠道侧自备） | 余额查询、提现接口入参 | 商户号 |
 | `busId` | `TradeImport` 返回 | `TradeConfirm` / `TradeStatus` / `TradeCancel` | 分账批次主记录 ID |
 | `outWithdrawNo` | 调用方自行生成 | `WithdrawalApply` / `WithdrawalQuery` | 提现幂等键，超时重查不可换单号 |
@@ -159,6 +159,8 @@ CreatePrepare ──> UploadFiles ──> [EDITING] ──> Confirm ──> Sett
 失败路径：SettlementStatus=2（FAILED）或草稿仍是 EDITING/FAILED 时
         └─> UpdatePrepare（业务字段整体重报，fileManifest 仅含新文件）
               ──> UploadFiles ──> Confirm ──> 轮询（循环直至成功）
+资料查询/失败重提：MerchantOnboardInfo（按 merchantId 查全量入驻资料 + 最近一笔网商入驻状态，
+        mybankInfo.status=2 失败时按 failReason 修改资料，用返回的 draftId 走上面的失败路径重提）
 ```
 
 顺序约束：`CreatePrepare` → `UploadFiles` 严格两步；`Confirm` 前须完成 `UploadFiles`；
@@ -196,6 +198,7 @@ WithdrawalApply（outWithdrawNo 幂等键 + totalAmount）──> WithdrawalQuer
 | `UpdatePrepare` | `/channel/merchant_info_draft/update/prepare` | 更新草稿并申请上传凭证 |
 | `Confirm` | `/channel/merchant_info_draft/confirm` | 确认提交草稿 |
 | `SettlementStatus` | `/channel/merchant_info_draft/settlement_status` | 查询入驻状态 |
+| `MerchantOnboardInfo` | `/channel/merchant/onboard-info` | 查询商户入驻信息 |
 
 ### 创建草稿并申请上传凭证
 
@@ -350,6 +353,35 @@ result, _, err := client.SettlementStatus(ctx, dto)
 | `2` | 失败 |
 | `3` | 待激活 |
 | `4` | 激活中 |
+
+### 查询商户入驻信息
+
+按商户号查询商户的全部入驻资料：商户信息、主体基础信息（证照、负责人、联系人、地址、证件图片地址）、全部结算账户，以及最近一笔网商银行入驻信息（含入驻状态与失败原因）。用于核对进件资料，或收到网商入驻失败通知后查看当前资料再修改重提。
+
+```go
+dto := hst.NewMerchantOnboardInfoDto("<merchant_id>")
+result, _, err := client.MerchantOnboardInfo(ctx, dto)
+// result.BizData.DraftId            — 入驻草稿 ID（即入驻结果通知中的 applyNo，非草稿流程创建的商户不返回）
+// result.BizData.MerchantInfo       — 商户信息
+// result.BizData.MerchantBaseInfo   — 主体基础信息（主体资料不存在时为 nil）
+// result.BizData.SettlementAccounts — 结算账户列表，默认账户在前，无结算账户时为空数组
+// result.BizData.MybankInfo         — 最近一笔网商入驻信息（未发起过网商入驻时为 nil）
+```
+
+> 响应只包含有值的字段：`MerchantBaseInfo` / `MybankInfo` 请按指针是否为 `nil` 判断，不要依赖空字符串。
+> `MerchantBaseInfo` 中 `CertPhotoA` ~ `OtherPhoto` 为预签名图片地址，**有效期 7 天**，同一字段多张图片用英文逗号分隔；请勿长期保存地址，过期后重新调用本接口获取。
+
+`mybankInfo.status` 取值：
+
+| status | 说明 | 可否修改重提 |
+|---|---|---|
+| `0` | 审核中 | 否 |
+| `1` | 成功 | 否 |
+| `2` | 失败 | 可：按 `FailReason` 修改资料后用返回的 `DraftId` 走 `UpdatePrepare` → `UploadFiles` → `Confirm` 重提，商户号、结算账户 ID 保持不变 |
+| `3` | 待激活 | 否 |
+| `4` | 激活中 | 否 |
+
+> 商户号不存在或不归属于渠道商时业务失败，`bizMsg` 为「商户不存在或无权访问」。
 
 ## 分账接口
 
@@ -603,7 +635,7 @@ if err != nil {
 加密信封类方法统一返回 `(result *SignObjectRespResult[T], err error)`；
 multipart 类方法返回业务数据本身（无信封包装）。
 
-### 方法签名（14 个）
+### 方法签名（16 个）
 
 ```go
 // 进件（加密信封，除 UploadFiles）
@@ -612,12 +644,14 @@ func (x *Hst) UpdatePrepare(ctx context.Context, dto *UpdatePrepareDto) (*SignOb
 func (x *Hst) UploadFiles(ctx context.Context, dto *UploadFilesDto) (*UploadFilesBizData, error) // multipart
 func (x *Hst) Confirm(ctx context.Context, dto *ConfirmDto) (*SignObjectRespResult[*ConfirmBizData], *SignObjectResp, error)
 func (x *Hst) SettlementStatus(ctx context.Context, dto *SettlementStatusDto) (*SignObjectRespResult[*SettlementStatusBizData], *SignObjectResp, error)
+func (x *Hst) MerchantOnboardInfo(ctx context.Context, dto *MerchantOnboardInfoDto) (*SignObjectRespResult[*MerchantOnboardInfoBizData], *SignObjectResp, error)
 
 // 分账
 func (x *Hst) GetUploadToken(ctx context.Context, dto *GetUploadTokenDto) (*SignObjectRespResult[*GetUploadTokenBizData], *SignObjectResp, error)
 func (x *Hst) TradeImport(ctx context.Context, dto *TradeImportDto) (busId string, err error) // multipart
 func (x *Hst) TradeConfirm(ctx context.Context, dto *TradeConfirmDto) (*SignObjectRespResult[bool], *SignObjectResp, error)
 func (x *Hst) TradeStatus(ctx context.Context, dto *TradeStatusDto) (*SignObjectRespResult[*TradeStatusBizData], *SignObjectResp, error)
+func (x *Hst) TradeSplitStatus(ctx context.Context, dto *TradeSplitStatusDto) (*SignObjectRespResult[*TradeSplitStatusBizData], *SignObjectResp, error)
 func (x *Hst) TradeCancel(ctx context.Context, dto *TradeCancelDto) (*SignObjectRespResult[bool], *SignObjectResp, error)
 
 // 余额查询
@@ -644,6 +678,7 @@ func NewUpdatePrepareDto(draftId, legalName, shortName string, productCode []str
 func NewUploadFilesDto(uploadToken string) *UploadFilesDto
 func NewConfirmDto(draftId string) *ConfirmDto
 func NewSettlementStatusDto(draftId string) *SettlementStatusDto
+func NewMerchantOnboardInfoDto(merchantId string) *MerchantOnboardInfoDto
 
 // 分账
 func NewGetUploadTokenDto(fileName, fileSM3Hash string) *GetUploadTokenDto
@@ -673,10 +708,12 @@ func (x *UploadFilesDto) SetFiles(field string, files ...*UploadFile) *UploadFil
 | `UploadFiles` | `*UploadFilesBizData` | `DraftId`、`DraftStatus`（EDITING/SUBMITTING/CONFIRMED/FAILED）及草稿全量字段 |
 | `Confirm` | `*ConfirmBizData` | `DraftStatus`、`MerchantId`、`OrgId`、`AccountId` |
 | `SettlementStatus` | `*SettlementStatusBizData` | `SettlementStatus`（0-4）、`MerchantCreated`、`ActivateUrl` |
+| `MerchantOnboardInfo` | `*MerchantOnboardInfoBizData` | `DraftId`、`MerchantInfo`、`MerchantBaseInfo`（图片地址 7 天有效）、`SettlementAccounts`（默认账户在前）、`MybankInfo`（status 0-4、`FailReason`） |
 | `GetUploadToken` | `*GetUploadTokenBizData` | `UploadToken`、`ExpireSeconds` |
 | `TradeImport` | `string`（busId） | — |
 | `TradeConfirm` / `TradeCancel` | `bool` | — |
 | `TradeStatus` | `*TradeStatusBizData` | `DocStatus`、`TotalDetailCount`、`SuccessCount`、`FailCount`、金额字段 |
+| `TradeSplitStatus` | `*TradeSplitStatusBizData` | `SplitStatus`、`DetailCount`、`TotalAmount`、`MybankBatchNo`、`FailReason` |
 | `AvailableBalance` | `*AvailableBalanceBizData` | `BalanceInfos`（按 `accountType` 取：AVAILABLE_BALANCE 可提现 / PENDING_BALANCE 待结算） |
 | `BrandBalance` | `string` | 品牌专户余额（元，平台备付金，非商户额度） |
 | `WithdrawalApply` | `*WithdrawalApplyBizData` | `WithdrawNo`、`Status`、`ErrorDesc`（幂等命中时另有金额/时间快照） |
@@ -760,6 +797,7 @@ hst/
 ├── draft_upload_files.go          进件：上传资质文件
 ├── draft_confirm.go              进件：确认提交
 ├── draft_settlement_status.go     进件：查询入驻状态
+├── merchant_onboard_info.go       进件：查询商户入驻信息
 ├── trade_get_upload_token.go      分账：申请上传凭证
 ├── trade_import.go               分账：上传交易订单
 ├── trade_confirm.go              分账：确认导入
